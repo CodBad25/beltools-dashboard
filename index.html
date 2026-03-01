@@ -936,9 +936,11 @@ function updateCurrentClass() {
   const vacance = getVacanceForDate(now);
   if (vacance) {
     el.style.display = 'inline-flex';
-    const fin = new Date(vacance.fin + 'T23:59:59');
-    const joursRestants = Math.ceil((fin.getTime() - now.getTime()) / 86400000);
-    el.innerHTML = `<span class="class-dot" style="background:#06b6d4"></span><strong>${vacance.nom}</strong><span class="class-time">· encore ${joursRestants} jour${joursRestants > 1 ? 's' : ''}</span>`;
+    const fin = new Date(vacance.fin + 'T00:00:00');
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const joursRestants = Math.round((fin.getTime() - today.getTime()) / 86400000);
+    const reste = joursRestants === 0 ? '· dernier jour' : `· encore ${joursRestants} jour${joursRestants > 1 ? 's' : ''}`;
+    el.innerHTML = `<span class="class-dot" style="background:#06b6d4"></span><strong>${vacance.nom}</strong><span class="class-time">${reste}</span>`;
     return;
   }
 
