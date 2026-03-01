@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -123,6 +124,21 @@
       color: rgba(255,255,255,0.3);
       font-weight: 300;
     }
+
+    .sync-indicator {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-top: 6px;
+      float: right;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .sync-ok { background: #4ade80; opacity: 1; animation: syncFade 2s forwards; }
+    .sync-loading { background: #fbbf24; opacity: 1; animation: syncPulse 1s infinite; }
+    .sync-error { background: #f87171; opacity: 1; }
+    @keyframes syncPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    @keyframes syncFade { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 
     /* ── MAIN ── */
     .main {
@@ -562,6 +578,7 @@
       </div>
       <div class="clock-widget">
         <div class="clock-time" id="clock"></div>
+        <div id="sync-indicator" class="sync-indicator" title=""></div>
       </div>
     </div>
   </div>
@@ -586,8 +603,8 @@
         <div class="form-group"><label class="form-label">URL</label><input type="url" class="form-input" id="form-url" placeholder="https://..."></div>
         <div class="form-group">
           <label class="form-label">Icone</label>
-          <div class="chips" id="icon-type-chips"><button class="chip active" data-icon-type="emoji">Emoji</button><button class="chip" data-icon-type="image">Image URL</button></div>
-          <div style="margin-top:0.4rem"><input type="text" class="form-input" id="form-icon" placeholder="🔧"></div>
+          <div class="chips" id="icon-type-chips"><button class="chip active" data-icon-type="emoji">Emoji</button><button class="chip" data-icon-type="image">Image URL</button><button class="chip" data-icon-type="file">Fichier</button></div>
+          <div style="margin-top:0.4rem"><input type="text" class="form-input" id="form-icon" placeholder="🔧"><input type="file" accept="image/*" id="form-icon-file" style="display:none"></div>
           <div class="icon-preview" id="icon-preview"></div>
         </div>
         <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="form-desc" placeholder="Description courte"></div>
@@ -683,7 +700,71 @@ function getState() {
 }
 
 let state = getState();
-function persist() { saveConfig(state); }
+
+// ── Supabase sync ──
+const SUPABASE_URL = 'https://ewyelltfbkfrocygnydd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3eWVsbHRmYmtmcm9jeWdueWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNzI3MTgsImV4cCI6MjA4MTc0ODcxOH0.5uhmRtBXQ72ME1BWokV-LyzGr_oRmNp5j2WjeYX0QMg';
+let sb = null;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) { console.warn('Supabase non disponible:', e); }
+
+let syncTimer = null;
+function syncToCloud() {
+  if (!sb) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try {
+      const customTools = state.tools.filter(t => t.id.startsWith('custom_'));
+      const builtinState = state.tools.filter(t => !t.id.startsWith('custom_')).map(t => ({ id: t.id, fav: t.fav, order: t.order }));
+      await sb.from('beltools_config').upsert({
+        id: 'default',
+        custom_tools: customTools,
+        builtin_state: builtinState,
+        collapsed: state.collapsed,
+        updated_at: new Date().toISOString()
+      });
+      setSyncStatus('ok');
+    } catch(e) { console.warn('Sync cloud erreur:', e); setSyncStatus('error'); }
+  }, 1000);
+}
+
+async function syncFromCloud() {
+  if (!sb) return;
+  try {
+    setSyncStatus('loading');
+    const { data, error } = await sb.from('beltools_config').select('*').eq('id', 'default').single();
+    if (error || !data) { setSyncStatus('error'); return; }
+    // Merge custom tools from cloud
+    const cloudCustom = data.custom_tools || [];
+    const localCustomIds = new Set(state.tools.filter(t => t.id.startsWith('custom_')).map(t => t.id));
+    const cloudIds = new Set(cloudCustom.map(t => t.id));
+    // Remove local custom tools not in cloud (deleted elsewhere)
+    state.tools = state.tools.filter(t => !t.id.startsWith('custom_') || cloudIds.has(t.id));
+    // Add/update cloud custom tools
+    cloudCustom.forEach(ct => {
+      const existing = state.tools.find(t => t.id === ct.id);
+      if (existing) { Object.assign(existing, ct); }
+      else { state.tools.push(ct); }
+    });
+    // Restore builtin fav/order from cloud
+    const builtinState = data.builtin_state || [];
+    builtinState.forEach(bs => {
+      const t = state.tools.find(x => x.id === bs.id);
+      if (t) { t.fav = bs.fav; t.order = bs.order; }
+    });
+    if (data.collapsed !== undefined) state.collapsed = data.collapsed;
+    saveConfig(state);
+    setSyncStatus('ok');
+  } catch(e) { console.warn('Sync from cloud erreur:', e); setSyncStatus('error'); }
+}
+
+function setSyncStatus(s) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  el.className = 'sync-indicator sync-' + s;
+  el.title = s === 'ok' ? 'Synchronisé' : s === 'loading' ? 'Synchronisation...' : s === 'error' ? 'Erreur de synchro' : '';
+}
+
+function persist() { saveConfig(state); syncToCloud(); }
 function toolById(id) { return state.tools.find(t => t.id === id); }
 function favTools() { return state.tools.filter(t => t.fav).sort((a,b) => a.order - b.order); }
 function otherTools() { return state.tools.filter(t => !t.fav).sort((a,b) => a.order - b.order); }
@@ -891,6 +972,10 @@ function buildIconHTML(tool) {
   if (tool.svgIcon && SVG_ICONS[tool.svgIcon]) {
     return `<div class="card-icon" style="background:transparent;padding:0;border-radius:14px;overflow:hidden">${SVG_ICONS[tool.svgIcon]}</div>`;
   }
+  // Image URL or data URL
+  if (tool.icon && (tool.icon.startsWith('http') || tool.icon.startsWith('data:'))) {
+    return `<div class="card-icon" style="background:transparent;padding:0;border-radius:14px;overflow:hidden"><img src="${tool.icon}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='❌'"></div>`;
+  }
   // Short text badge (e.g. "6e", "5e")
   if (tool.icon && tool.icon.length <= 3 && /^[a-zA-Z0-9]/.test(tool.icon)) {
     return `<div class="card-icon" style="background:${colors.accent};color:#fff;font-weight:800;font-size:1.1rem">${tool.icon}</div>`;
@@ -986,7 +1071,35 @@ const formMine = document.getElementById('form-mine'), iconPreview = document.ge
 const colorChipsEl = document.getElementById('color-chips');
 ICON_COLORS.forEach(c => { const b = document.createElement('button'); b.className = 'color-chip'; b.dataset.color = c.id; b.style.background = c.bg; b.addEventListener('click', () => { colorChipsEl.querySelectorAll('.color-chip').forEach(x => x.classList.remove('active')); b.classList.add('active'); updateIconPreview(); }); colorChipsEl.appendChild(b); });
 let iconType = 'emoji';
-document.getElementById('icon-type-chips').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; iconType = c.dataset.iconType; document.getElementById('icon-type-chips').querySelectorAll('.chip').forEach(x => x.classList.remove('active')); c.classList.add('active'); formIcon.placeholder = iconType === 'emoji' ? '🔧' : 'https://...'; updateIconPreview(); });
+const formIconFile = document.getElementById('form-icon-file');
+document.getElementById('icon-type-chips').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  iconType = c.dataset.iconType;
+  document.getElementById('icon-type-chips').querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+  c.classList.add('active');
+  if (iconType === 'file') {
+    formIcon.style.display = 'none'; formIconFile.style.display = ''; formIconFile.click();
+  } else {
+    formIcon.style.display = ''; formIconFile.style.display = 'none';
+    formIcon.placeholder = iconType === 'emoji' ? '🔧' : 'https://...';
+  }
+  updateIconPreview();
+});
+formIconFile.addEventListener('change', () => {
+  const file = formIconFile.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+      const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 256, 256);
+      formIcon.value = c.toDataURL('image/webp', 0.85);
+      updateIconPreview();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
 formMine.addEventListener('click', () => formMine.classList.toggle('active'));
 formIcon.addEventListener('input', updateIconPreview);
 function updateIconPreview() {
@@ -995,7 +1108,7 @@ function updateIconPreview() {
   const colorName = s ? s.dataset.color : 'slate';
   const colors = getColorSet(colorName);
   if (!v) { iconPreview.innerHTML = ''; iconPreview.style.background = '#f8fafc'; return; }
-  if (iconType === 'image' || v.startsWith('http')) {
+  if (iconType === 'image' || iconType === 'file' || v.startsWith('http') || v.startsWith('data:')) {
     iconPreview.style.background = 'transparent';
     iconPreview.innerHTML = `<img src="${v}" alt="" onerror="this.parentElement.textContent='❌'">`;
   } else {
@@ -1008,8 +1121,10 @@ function openModal(id) {
   modalTitle.textContent = t ? 'Modifier l\'outil' : 'Ajouter un outil';
   formName.value = t ? t.name : ''; formUrl.value = t ? (t.url === '#' ? '' : t.url) : '';
   formIcon.value = t ? t.icon : ''; formDesc.value = t ? (t.desc || '') : '';
-  iconType = (t && t.icon && t.icon.startsWith('http')) ? 'image' : 'emoji';
+  iconType = (t && t.icon && t.icon.startsWith('data:')) ? 'file' : (t && t.icon && t.icon.startsWith('http')) ? 'image' : 'emoji';
   document.getElementById('icon-type-chips').querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.iconType === iconType));
+  formIcon.style.display = iconType === 'file' ? 'none' : '';
+  formIconFile.style.display = iconType === 'file' ? '' : 'none';
   formIcon.placeholder = iconType === 'emoji' ? '🔧' : 'https://...';
   colorChipsEl.querySelectorAll('.color-chip').forEach(b => b.classList.toggle('active', b.dataset.color === (t ? t.color || 'slate' : 'blue')));
   formMine.classList.toggle('active', t ? !!t.mine : false);
@@ -1051,7 +1166,9 @@ document.addEventListener('keydown', e => {
   if (n >= 1 && n <= 9) { const f = favTools(); if (n-1 < f.length && f[n-1].url !== '#') window.open(f[n-1].url, '_blank', 'noopener'); }
 });
 
-render();
+// Rendu initial : sync cloud puis render
+render(); // Affichage immédiat avec localStorage
+syncFromCloud().then(() => render()); // Puis mise à jour avec les données cloud
 </script>
 
 </body>
