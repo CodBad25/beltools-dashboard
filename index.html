@@ -1051,7 +1051,7 @@ const ctxMenu = document.getElementById('ctx-menu');
 function showContextMenu(x, y, id) {
   ctxToolId = id; const t = toolById(id); if (!t) return;
   document.getElementById('ctx-fav-label').textContent = t.fav ? 'Retirer des favoris' : 'Ajouter aux favoris';
-  ctxMenu.querySelector('[data-action="delete"]').style.display = isBuiltin(id) ? 'none' : '';
+  ctxMenu.querySelector('[data-action="delete"]').style.display = '';
   ctxMenu.classList.add('visible');
   const r = ctxMenu.getBoundingClientRect();
   ctxMenu.style.left = Math.min(x, innerWidth - r.width - 10) + 'px';
@@ -1064,7 +1064,7 @@ ctxMenu.addEventListener('click', e => {
   const a = item.dataset.action, t = toolById(ctxToolId);
   if (a === 'edit') { openModal(ctxToolId); hideContextMenu(); }
   else if (a === 'toggle-fav') { if (t) { t.fav = !t.fav; const s = t.fav ? favTools() : otherTools(); t.order = s.length ? Math.max(...s.map(x => x.order)) + 1 : 0; persist(); render(); } hideContextMenu(); }
-  else if (a === 'delete') { if (t && !isBuiltin(ctxToolId)) { state.tools = state.tools.filter(x => x.id !== ctxToolId); persist(); render(); } hideContextMenu(); }
+  else if (a === 'delete') { if (t) { state.tools = state.tools.filter(x => x.id !== ctxToolId); persist(); render(); } hideContextMenu(); }
 });
 
 let editingToolId = null;
