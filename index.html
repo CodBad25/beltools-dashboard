@@ -503,7 +503,10 @@
       background: #f8fafc;
     }
 
-    .icon-preview img { width: 32px; height: 32px; object-fit: contain; }
+    .icon-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
+    .icon-clear { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%; background: #ef4444; color: #fff; border: 2px solid #fff; font-size: 10px; line-height: 14px; text-align: center; cursor: pointer; display: none; }
+    .icon-preview-wrap { position: relative; display: inline-block; margin-top: 0.4rem; }
+    .icon-preview-wrap:hover .icon-clear { display: block; }
 
     .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.35rem 0; }
     .toggle-label { font-size: 0.8rem; font-weight: 500; }
@@ -605,7 +608,7 @@
           <label class="form-label">Icone</label>
           <div class="chips" id="icon-type-chips"><button class="chip active" data-icon-type="emoji">Emoji</button><button class="chip" data-icon-type="image">Image URL</button><button class="chip" data-icon-type="file">Fichier</button></div>
           <div style="margin-top:0.4rem"><input type="text" class="form-input" id="form-icon" placeholder="🔧"><input type="file" accept="image/*" id="form-icon-file" style="display:none"></div>
-          <div class="icon-preview" id="icon-preview"></div>
+          <div class="icon-preview-wrap"><div class="icon-preview" id="icon-preview"></div><button class="icon-clear" id="icon-clear" type="button">✕</button></div>
         </div>
         <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="form-desc" placeholder="Description courte"></div>
         <div class="form-group"><label class="form-label">Couleur</label><div class="chips" id="color-chips"></div></div>
@@ -1100,6 +1103,10 @@ formIconFile.addEventListener('change', () => {
   };
   reader.readAsDataURL(file);
 });
+document.getElementById('icon-clear').addEventListener('click', () => {
+  formIcon.value = ''; formIconFile.value = ''; updateIconPreview();
+  document.getElementById('icon-clear').style.display = 'none';
+});
 formMine.addEventListener('click', () => formMine.classList.toggle('active'));
 formIcon.addEventListener('input', updateIconPreview);
 function updateIconPreview() {
@@ -1107,7 +1114,9 @@ function updateIconPreview() {
   const s = colorChipsEl.querySelector('.color-chip.active');
   const colorName = s ? s.dataset.color : 'slate';
   const colors = getColorSet(colorName);
-  if (!v) { iconPreview.innerHTML = ''; iconPreview.style.background = '#f8fafc'; return; }
+  const clearBtn = document.getElementById('icon-clear');
+  if (!v) { iconPreview.innerHTML = ''; iconPreview.style.background = '#f8fafc'; clearBtn.style.display = 'none'; return; }
+  clearBtn.style.display = (iconType === 'image' || iconType === 'file' || v.startsWith('http') || v.startsWith('data:')) ? 'block' : 'none';
   if (iconType === 'image' || iconType === 'file' || v.startsWith('http') || v.startsWith('data:')) {
     iconPreview.style.background = 'transparent';
     iconPreview.innerHTML = `<img src="${v}" alt="" onerror="this.parentElement.textContent='❌'">`;
