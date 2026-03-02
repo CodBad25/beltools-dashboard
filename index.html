@@ -18,12 +18,13 @@
       color: #1e293b;
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
+      zoom: 1.2;
     }
 
     /* ── HEADER ── */
     .header {
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      padding: 2rem 1.5rem 3.5rem;
+      padding: 1rem 1.5rem 0.75rem;
       position: relative;
       overflow: hidden;
     }
@@ -51,7 +52,7 @@
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       position: relative;
       z-index: 1;
     }
@@ -108,7 +109,263 @@
       margin-left: 0.15rem;
     }
 
-    .clock-widget { text-align: right; }
+    /* ── MINI STACK (sous greeting) ── */
+    .mini-stack {
+      margin-top: 0.6rem;
+      position: relative;
+      perspective: 600px;
+      height: 82px;
+      width: 240px;
+    }
+
+    .mini-card {
+      position: absolute;
+      left: 0;
+      width: 240px;
+      border-radius: 12px;
+      padding: 0.55rem 0.8rem;
+      transform-origin: top left;
+      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      will-change: transform, opacity;
+      color: #fff;
+    }
+
+    .mini-card[data-pos="0"] {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      z-index: 10;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .mini-card[data-pos="1"] {
+      transform: translateY(8px) scale(0.96) translateX(4px);
+      opacity: 0.45;
+      z-index: 9;
+      filter: blur(0.5px);
+    }
+    .mini-card[data-pos="2"] {
+      transform: translateY(14px) scale(0.92) translateX(8px);
+      opacity: 0.2;
+      z-index: 8;
+      filter: blur(1px);
+    }
+    .mini-card[data-pos="hidden"] {
+      transform: translateY(18px) scale(0.88);
+      opacity: 0;
+      z-index: 7;
+      pointer-events: none;
+    }
+    .mini-card.exiting {
+      transform: translateX(-120%) translateY(-5px) scale(0.9) !important;
+      opacity: 0 !important;
+      transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      z-index: 20 !important;
+    }
+
+    .mc-blue { background: linear-gradient(145deg, #1e3a5f, #1d4ed8); }
+    .mc-green { background: linear-gradient(145deg, #064e3b, #059669); }
+    .mc-purple { background: linear-gradient(145deg, #2e1065, #7c3aed); }
+    .mc-slate { background: linear-gradient(145deg, #1e293b, #334155); }
+
+    .mc-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      padding: 0.12rem 0.45rem;
+    }
+
+    .mc-badge::before {
+      content: '';
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: mcPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes mcPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    .mc-class {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .mc-slot {
+      font-size: 0.58rem;
+      opacity: 0.7;
+      margin-top: 0.1rem;
+    }
+
+    .mc-progress {
+      margin-top: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .mc-bar {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mc-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.85);
+      transition: width 1s linear;
+    }
+
+    .mc-time {
+      font-size: 0.55rem;
+      font-weight: 700;
+      opacity: 0.85;
+      white-space: nowrap;
+    }
+
+    .mc-back-class { font-size: 0.85rem; font-weight: 800; }
+    .mc-back-slot { font-size: 0.55rem; opacity: 0.6; }
+
+    /* ── CERCLE EDT (droite du header) ── */
+    .edt-ring-wrap {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      flex-shrink: 0;
+    }
+
+    svg.edt-ring {
+      width: 200px;
+      height: 200px;
+      overflow: visible;
+    }
+
+    .edt-ring-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .edt-ring-time {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    .edt-ring-slot {
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Header droite : cercle + légende ── */
+    .header-right {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* ── Légende compacte à droite du cercle ── */
+    .edt-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .edt-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 3px 0.5rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.6);
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+
+    .edt-legend-item.lg-active {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .edt-legend-item.lg-past {
+      opacity: 0.35;
+      text-decoration: line-through;
+    }
+
+    .edt-legend-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .edt-legend-slot {
+      font-weight: 700;
+      min-width: 20px;
+    }
+
+    .edt-legend-class {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .edt-legend-hour {
+      font-variant-numeric: tabular-nums;
+      opacity: 0.6;
+      font-size: 0.63rem;
+    }
+
+    .edt-legend-badge {
+      font-size: 0.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #0f172a;
+      line-height: 1.4;
+    }
+
+    /* ── État repos (vacances, weekend, fin journée) ── */
+    .edt-rest {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+    .edt-rest.visible { display: flex; }
+    .edt-rest-icon { font-size: 1.2rem; }
+    .edt-rest-text { color: rgba(255,255,255,0.7); font-size: 0.8rem; font-weight: 500; }
+    .edt-rest-sub { color: rgba(255,255,255,0.4); font-size: 0.65rem; }
+
+    .clock-widget { text-align: right; display: none; }
 
     .clock-time {
       font-size: 3rem;
@@ -680,7 +937,26 @@
         <h1>Bonjour <span>M.Belhaj</span></h1>
         <div class="date" id="date"></div>
         <div class="current-class" id="current-class" style="display:none"></div>
+        <div class="mini-stack" id="mini-stack"></div>
+        <div class="edt-rest" id="edt-rest">
+          <span class="edt-rest-icon" id="edt-rest-icon"></span>
+          <div>
+            <div class="edt-rest-text" id="edt-rest-text"></div>
+            <div class="edt-rest-sub" id="edt-rest-sub"></div>
+          </div>
+        </div>
       </div>
+      <div class="header-right">
+        <div class="edt-ring-wrap" id="edt-ring-wrap">
+          <svg class="edt-ring" id="edt-ring" viewBox="0 0 200 200"></svg>
+          <div class="edt-ring-center">
+            <div class="edt-ring-time" id="edt-ring-time"></div>
+            <div class="edt-ring-slot" id="edt-ring-slot"></div>
+          </div>
+        </div>
+        <div class="edt-legend" id="edt-legend"></div>
+      </div>
+      <!-- Horloge cachée (utilisée par le JS existant) -->
       <div class="clock-widget">
         <div class="clock-time" id="clock"></div>
         <div id="sync-indicator" class="sync-indicator" title=""></div>
@@ -738,6 +1014,11 @@
   </div>
 
   <footer>beltools.fr</footer>
+
+  <!-- Simulateur EDT (dev only, visible uniquement en local) -->
+  <div id="edt-sim" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#1e293b; padding:0.5rem 1rem; z-index:9999; display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; box-shadow:0 -2px 12px rgba(0,0,0,0.3);">
+    <span style="color:#94a3b8; font-size:0.7rem; font-weight:600; margin-right:0.5rem;">⏱ Simulateur EDT</span>
+  </div>
 
 <script>
 // ── SVG icons for known services ──
@@ -909,8 +1190,8 @@ function getVacanceForDate(d) {
   const ts = d.getTime();
   for (const v of VACANCES) {
     const debut = new Date(v.debut + 'T00:00:00');
-    const fin = new Date(v.fin + 'T23:59:59');
-    if (ts >= debut.getTime() && ts <= fin.getTime()) return v;
+    const fin = new Date(v.fin + 'T00:00:00');
+    if (ts >= debut.getTime() && ts < fin.getTime()) return v;
   }
   return null;
 }
@@ -1045,44 +1326,491 @@ function getCurrentClass() {
   return null;
 }
 
+// ── WIDGET EDT : Cercle SVG + Mini Stack ──
+
+const COLOR_MAP = { '6A': 'blue', '6C': 'blue', '5A': 'green', '5BD3': 'green', '4D': 'purple' };
+let edtSimTime = null;
+let edtSimDay = null;
+
+function edtToMin(arr) { return arr[0] * 60 + arr[1]; }
+function edtFmtH(arr) { return `${arr[0]}h${String(arr[1]).padStart(2, '0')}`; }
+
+// Construire la liste des cours du jour
+function edtBuildCoursOfDay(now) {
+  const dow = now.getDay();
+  if (dow < 1 || dow > 5) return [];
+  const dayEdt = EDT[dow];
+  if (!dayEdt) return [];
+  const parity = getWeekParity(now);
+  const cours = [];
+  for (const [creneau, times] of Object.entries(CRENEAUX)) {
+    const slot = getSlotForWeek(dayEdt[creneau], parity);
+    if (slot) {
+      const info = CLASSES_INFO[slot.classe] || { label: slot.classe, color: '#94a3b8' };
+      cours.push({
+        id: creneau,
+        classe: slot.classe,
+        label: info.label,
+        hex: info.color,
+        couleur: COLOR_MAP[slot.classe] || 'slate',
+        type: slot.type || 'cours',
+        debut: times.start,
+        fin: times.end,
+      });
+    }
+  }
+  return cours;
+}
+
+// ── Structure FIXE de l'horloge (approche proto-horloge) ──
+// Constantes cercle (viewBox 140×140)
+const EDT_CX = 100, EDT_CY = 100, EDT_R = 80, EDT_STROKE = 14, EDT_GAP = 2;
+
+const EDT_SLOTS = ['M1','M2','M3','M4','S1','S2','S3'];
+
+// 14 segments fixes : 7 cours + 5 récré + 1 midi + 1 soirée
+const EDT_PARTS = [
+  { id: 'M1', type: 'cours', debut: [8,10],  fin: [9,5] },
+  { id: 'r1', type: 'recre', debut: [9,5],   fin: [9,10] },
+  { id: 'M2', type: 'cours', debut: [9,10],  fin: [10,5] },
+  { id: 'r2', type: 'recre', debut: [10,5],  fin: [10,20] },
+  { id: 'M3', type: 'cours', debut: [10,20], fin: [11,15] },
+  { id: 'r3', type: 'recre', debut: [11,15], fin: [11,20] },
+  { id: 'M4', type: 'cours', debut: [11,20], fin: [12,15] },
+  { id: 'midi',type:'midi',  debut: [12,15], fin: [13,50] },
+  { id: 'S1', type: 'cours', debut: [13,50], fin: [14,45] },
+  { id: 'r4', type: 'recre', debut: [14,45], fin: [14,50] },
+  { id: 'S2', type: 'cours', debut: [14,50], fin: [15,45] },
+  { id: 'r5', type: 'recre', debut: [15,45], fin: [15,50] },
+  { id: 'S3', type: 'cours', debut: [15,50], fin: [16,45] },
+  { id: 'soir',type:'soir',  debut: [16,45], fin: [18,10] },
+];
+
+// Calculer durées et angles UNE SEULE FOIS
+const edtTotalMin = EDT_PARTS.reduce((s, p) => s + (edtToMin(p.fin) - edtToMin(p.debut)), 0);
+const edtAvailDeg = 360 - EDT_PARTS.length * EDT_GAP;
+let edtAngleCursor = -90; // commence en haut (12h)
+EDT_PARTS.forEach(p => {
+  p.durMin = edtToMin(p.fin) - edtToMin(p.debut);
+  p.degrees = (p.durMin / edtTotalMin) * edtAvailDeg;
+  p.startAngle = edtAngleCursor;
+  p.endAngle = edtAngleCursor + p.degrees;
+  edtAngleCursor = p.endAngle + EDT_GAP;
+});
+
+function edtPolarToXY(cx, cy, r, angleDeg) {
+  const rad = angleDeg * (Math.PI / 180);
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function edtArcPath(cx, cy, r, startDeg, endDeg) {
+  const s = edtPolarToXY(cx, cy, r, startDeg);
+  const e = edtPolarToXY(cx, cy, r, endDeg);
+  const large = (endDeg - startDeg) > 180 ? 1 : 0;
+  return `M ${s[0]} ${s[1]} A ${r} ${r} 0 ${large} 1 ${e[0]} ${e[1]}`;
+}
+
+// ── Dessiner le cercle UNE SEULE FOIS au chargement ──
+let edtRingDrawn = false;
+let edtLastColorKey = '';
+
+function edtInitRing() {
+  if (edtRingDrawn) return;
+  edtRingDrawn = true;
+  const svg = document.getElementById('edt-ring');
+  svg.innerHTML = '';
+
+  // Fond anneau
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  bg.setAttribute('cx', EDT_CX); bg.setAttribute('cy', EDT_CY);
+  bg.setAttribute('r', EDT_R);
+  bg.setAttribute('fill', 'none');
+  bg.setAttribute('stroke', '#1e293b');
+  bg.setAttribute('stroke-width', EDT_STROKE + 1);
+  svg.appendChild(bg);
+
+  // Arcs pour chaque segment
+  EDT_PARTS.forEach(p => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', edtArcPath(EDT_CX, EDT_CY, EDT_R, p.startAngle, p.endAngle));
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'butt');
+    path.setAttribute('data-id', p.id);
+    path.setAttribute('data-type', p.type);
+
+    if (p.type === 'cours') {
+      path.setAttribute('stroke', 'rgba(255,255,255,0.15)'); // couleur par défaut, mise à jour par edtColorRing
+      path.setAttribute('stroke-width', EDT_STROKE);
+      path.setAttribute('opacity', '0.7');
+    } else if (p.type === 'recre') {
+      path.setAttribute('stroke', '#334155');
+      path.setAttribute('stroke-width', EDT_STROKE * 0.5);
+      path.setAttribute('opacity', '0.5');
+    } else if (p.type === 'midi') {
+      path.setAttribute('stroke', '#1e3a5f');
+      path.setAttribute('stroke-width', EDT_STROKE * 0.6);
+      path.setAttribute('opacity', '0.4');
+    } else if (p.type === 'soir') {
+      path.setAttribute('stroke', '#1e293b');
+      path.setAttribute('stroke-width', EDT_STROKE * 0.4);
+      path.setAttribute('opacity', '0.3');
+    }
+    svg.appendChild(path);
+
+    // Étiquettes pour les cours : id à l'extérieur, heure à l'intérieur
+    if (p.type === 'cours') {
+      const midAngle = (p.startAngle + p.endAngle) / 2;
+      // Label M1/S3 à l'extérieur
+      const [lx, ly] = edtPolarToXY(EDT_CX, EDT_CY, EDT_R + EDT_STROKE / 2 + 8, midAngle);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      lbl.setAttribute('x', lx); lbl.setAttribute('y', ly);
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.setAttribute('dominant-baseline', 'central');
+      lbl.setAttribute('fill', 'rgba(255,255,255,0.35)');
+      lbl.setAttribute('font-size', '7');
+      lbl.setAttribute('font-weight', '700');
+      lbl.setAttribute('font-family', 'Inter, sans-serif');
+      lbl.textContent = p.id;
+      svg.appendChild(lbl);
+
+      // Heure de début à l'intérieur
+      const [hx, hy] = edtPolarToXY(EDT_CX, EDT_CY, EDT_R - EDT_STROKE / 2 - 9, p.startAngle);
+      const hr = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      hr.setAttribute('x', hx); hr.setAttribute('y', hy);
+      hr.setAttribute('text-anchor', 'middle');
+      hr.setAttribute('dominant-baseline', 'central');
+      hr.setAttribute('fill', 'rgba(255,255,255,0.2)');
+      hr.setAttribute('font-size', '5.5');
+      hr.setAttribute('font-family', 'Inter, sans-serif');
+      const hh = p.debut[0], mm = p.debut[1];
+      hr.textContent = `${hh}h${mm > 0 ? String(mm).padStart(2, '0') : ''}`;
+      svg.appendChild(hr);
+    }
+  });
+
+  // Point blanc (aiguille)
+  const needle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  needle.setAttribute('id', 'edt-needle');
+  needle.setAttribute('cx', EDT_CX); needle.setAttribute('cy', EDT_CY - EDT_R);
+  needle.setAttribute('r', '4');
+  needle.setAttribute('fill', '#fff');
+  needle.setAttribute('filter', 'drop-shadow(0 0 4px #fff)');
+  svg.appendChild(needle);
+}
+
+// Mettre à jour les couleurs des segments cours (quand le jour change)
+function edtColorRing(cours) {
+  const key = EDT_SLOTS.map(id => {
+    const c = cours.find(x => x.id === id);
+    return c ? c.hex : 'none';
+  }).join(',');
+  if (key === edtLastColorKey) return;
+  edtLastColorKey = key;
+
+  const svg = document.getElementById('edt-ring');
+  svg.querySelectorAll('path[data-type="cours"]').forEach(el => {
+    const c = cours.find(x => x.id === el.dataset.id);
+    el.setAttribute('stroke', c ? c.hex : 'rgba(255,255,255,0.1)');
+  });
+}
+
+// Angle de l'aiguille — position dans la structure fixe
+function edtNeedleAngle(nowMin) {
+  const first = EDT_PARTS[0];
+  const last = EDT_PARTS[EDT_PARTS.length - 1];
+  const firstMin = edtToMin(first.debut);
+  const lastMin = edtToMin(last.fin);
+
+  if (nowMin <= firstMin) return first.startAngle;
+  if (nowMin >= lastMin) return last.endAngle;
+
+  for (const p of EDT_PARTS) {
+    const deb = edtToMin(p.debut), fin = edtToMin(p.fin);
+    if (nowMin >= deb && nowMin < fin) {
+      const pct = (nowMin - deb) / (fin - deb);
+      return p.startAngle + pct * p.degrees;
+    }
+  }
+  return -90;
+}
+
+// Mettre à jour le cercle — seul le point blanc bouge + classes CSS sur les arcs
+function edtUpdateRing(cours, nowMin) {
+  const needle = document.getElementById('edt-needle');
+  const angle = edtNeedleAngle(nowMin);
+  const [nx, ny] = edtPolarToXY(EDT_CX, EDT_CY, EDT_R, angle);
+  needle.setAttribute('cx', nx);
+  needle.setAttribute('cy', ny);
+
+  // Aucun changement d'opacité sur les arcs — le cercle reste visuellement identique
+  const coursActuel = cours.find(c => nowMin >= edtToMin(c.debut) && nowMin < edtToMin(c.fin));
+
+  // Heure au centre
+  const ringTime = document.getElementById('edt-ring-time');
+  const ringSlot = document.getElementById('edt-ring-slot');
+  const simNow = edtSimTime ? { h: edtSimTime[0], m: edtSimTime[1] } : (() => { const d = new Date(); return { h: d.getHours(), m: d.getMinutes() }; })();
+  ringTime.textContent = `${simNow.h}h${String(simNow.m).padStart(2, '0')}`;
+
+  if (coursActuel) {
+    ringSlot.textContent = coursActuel.id;
+    ringTime.style.color = coursActuel.hex;
+  } else {
+    ringSlot.textContent = '';
+    ringTime.style.color = '#fff';
+  }
+
+  // Légende
+  edtUpdateLegend(cours, nowMin, coursActuel);
+}
+
+function edtUpdateLegend(cours, nowMin, coursActuel) {
+  const legend = document.getElementById('edt-legend');
+  legend.innerHTML = '';
+
+  EDT_SLOTS.forEach(slotId => {
+    const c = cours.find(x => x.id === slotId);
+    const times = CRENEAUX[slotId];
+    const slotEnd = edtToMin(times.end);
+    const isPast = c && slotEnd <= nowMin && !(coursActuel && c.id === coursActuel.id);
+    const isActive = coursActuel && c && c.id === coursActuel.id;
+
+    const item = document.createElement('div');
+    item.className = 'edt-legend-item' + (isActive ? ' lg-active' : '') + (isPast ? ' lg-past' : '') + (!c ? ' lg-past' : '');
+
+    const hex = c ? c.hex : 'rgba(255,255,255,0.15)';
+    const label = c ? c.label : '—';
+    const heure = edtFmtH(times.start);
+    item.innerHTML = `<span class="edt-legend-dot" style="background:${hex}"></span><span class="edt-legend-slot">${slotId}</span><span class="edt-legend-class">${label}</span><span class="edt-legend-hour">${heure}</span>`;
+    legend.appendChild(item);
+  });
+}
+
+// Mini stack
+let edtStackIndex = -1;
+let edtStackAnim = false;
+
+function edtCreateCard(cours, pos, nowMin) {
+  const card = document.createElement('div');
+  card.className = `mini-card mc-${cours.couleur}`;
+  card.dataset.pos = pos >= 3 ? 'hidden' : String(pos);
+  card.dataset.id = cours.id;
+
+  if (pos === 0) {
+    const dMin = edtToMin(cours.debut), fMin = edtToMin(cours.fin);
+    const total = fMin - dMin;
+    const ecoule = Math.max(0, Math.min(total, nowMin - dMin));
+    const pct = Math.round((ecoule / total) * 100);
+    const reste = fMin - nowMin;
+    const inCours = nowMin >= dMin && nowMin < fMin;
+    const badgeText = inCours ? 'En cours' : 'Prochain';
+
+    card.innerHTML = `
+      <div class="mc-top">
+        <div class="mc-badge">${badgeText}</div>
+        <div class="mc-class">${cours.label}</div>
+      </div>
+      <div class="mc-slot">${cours.id} · ${edtFmtH(cours.debut)}–${edtFmtH(cours.fin)}${cours.type === 'devoirs-faits' ? ' · DF' : ''}</div>
+      <div class="mc-progress">
+        <div class="mc-bar"><div class="mc-bar-fill" style="width:${inCours ? pct : 0}%"></div></div>
+        <div class="mc-time">${inCours ? (reste > 0 ? reste + ' min' : 'Terminé') : 'dans ' + (dMin - nowMin) + ' min'}</div>
+      </div>`;
+  } else {
+    card.innerHTML = `
+      <div class="mc-back-class">${cours.label}</div>
+      <div class="mc-back-slot">${cours.id} · ${edtFmtH(cours.debut)}–${edtFmtH(cours.fin)}</div>`;
+  }
+  return card;
+}
+
+function edtRenderStack(cours, nowMin) {
+  const stack = document.getElementById('mini-stack');
+
+  // Trouver le cours actuel ou le prochain
+  let idx = cours.findIndex(c => nowMin >= edtToMin(c.debut) && nowMin < edtToMin(c.fin));
+  if (idx === -1) {
+    idx = cours.findIndex(c => edtToMin(c.debut) > nowMin);
+  }
+  if (idx === -1) idx = cours.length; // tous terminés
+
+  // Transition animée si changement
+  if (edtStackIndex !== -1 && idx > edtStackIndex && idx < cours.length && !edtStackAnim) {
+    edtStackAnim = true;
+    const top = stack.querySelector('.mini-card[data-pos="0"]');
+    if (top) top.classList.add('exiting');
+    setTimeout(() => {
+      edtStackIndex = idx;
+      edtRebuildStack(cours, nowMin, idx);
+      edtStackAnim = false;
+    }, 450);
+    return;
+  }
+
+  edtStackIndex = idx;
+  edtRebuildStack(cours, nowMin, idx);
+}
+
+function edtRebuildStack(cours, nowMin, idx) {
+  const stack = document.getElementById('mini-stack');
+  stack.innerHTML = '';
+  if (idx >= cours.length) {
+    stack.style.display = 'none';
+    return;
+  }
+  stack.style.display = '';
+  for (let i = 0; i < 3; i++) {
+    const ci = idx + i;
+    if (ci >= cours.length) break;
+    stack.appendChild(edtCreateCard(cours[ci], i, nowMin));
+  }
+}
+
+// État repos
+function edtShowRest(icon, text, sub) {
+  document.getElementById('mini-stack').style.display = 'none';
+  const rest = document.getElementById('edt-rest');
+  rest.classList.add('visible');
+  document.getElementById('edt-rest-icon').textContent = icon;
+  document.getElementById('edt-rest-text').textContent = text;
+  document.getElementById('edt-rest-sub').textContent = sub || '';
+}
+
+function edtHideRest() {
+  document.getElementById('edt-rest').classList.remove('visible');
+}
+
+function edtShowRingRest(emoji) {
+  const wrap = document.getElementById('edt-ring-wrap');
+  wrap.style.opacity = '0.2';
+  const needle = document.getElementById('edt-needle');
+  if (needle) needle.style.display = 'none';
+  const ringTime = document.getElementById('edt-ring-time');
+  ringTime.textContent = emoji;
+  ringTime.style.color = '#fff';
+  ringTime.style.fontSize = '1.4rem';
+  document.getElementById('edt-ring-slot').textContent = '';
+  document.getElementById('edt-legend').innerHTML = '';
+  edtLastColorKey = ''; // forcer mise à jour couleurs au retour
+}
+
+function edtResetRing() {
+  document.getElementById('edt-ring-wrap').style.opacity = '1';
+  const needle = document.getElementById('edt-needle');
+  if (needle) needle.style.display = '';
+  document.getElementById('edt-ring-time').style.fontSize = '';
+}
+
+// ── Fonction principale de mise à jour ──
 function updateCurrentClass() {
   const el = document.getElementById('current-class');
-  const now = new Date();
+  el.style.display = 'none';
+  const now = (typeof edtGetNow === 'function') ? edtGetNow() : new Date();
+
+  // Dessiner le cercle fixe au premier appel
+  edtInitRing();
 
   // Vacances ?
   const vacance = getVacanceForDate(now);
   if (vacance) {
-    el.style.display = 'inline-flex';
     const fin = new Date(vacance.fin + 'T00:00:00');
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const joursRestants = Math.round((fin.getTime() - today.getTime()) / 86400000);
-    const reste = joursRestants === 0 ? '· dernier jour' : `· encore ${joursRestants} jour${joursRestants > 1 ? 's' : ''}`;
-    el.innerHTML = `<span class="class-dot" style="background:#06b6d4"></span><strong>${vacance.nom}</strong><span class="class-time">${reste}</span>`;
+    const jours = Math.max(0, Math.round((fin.getTime() - today.getTime()) / 86400000));
+    const sub = jours === 0 ? 'Dernier jour' : `Encore ${jours} jour${jours > 1 ? 's' : ''}`;
+    edtShowRest('🏖️', vacance.nom, sub);
+    edtShowRingRest('🏖️');
     return;
   }
 
   // Week-end ?
   const dow = now.getDay();
   if (dow === 0 || dow === 6) {
-    el.style.display = 'inline-flex';
-    el.innerHTML = `<span class="class-dot" style="background:#f59e0b"></span><strong>Week-end</strong>`;
+    edtShowRest('☀️', 'Week-end', 'Reprise lundi');
+    edtShowRingRest('☀️');
     return;
   }
 
-  const cls = getCurrentClass();
-  if (!cls) { el.style.display = 'none'; return; }
+  edtHideRest();
+  edtResetRing();
 
-  el.style.display = 'inline-flex';
-  const typeLabel = cls.type === 'devoirs-faits' ? 'Devoirs faits' : '';
-  const timeLabel = cls.upcoming
-    ? `dans ${cls.startH}h${cls.startM === '00' ? '' : cls.startM}`
-    : `jusqu'à ${cls.endH}h${cls.endM === '00' ? '' : cls.endM}`;
+  const cours = edtBuildCoursOfDay(now);
+  if (cours.length === 0) {
+    edtShowRest('📭', 'Pas de cours', 'Journée libre');
+    edtShowRingRest('📭');
+    return;
+  }
 
-  el.innerHTML = `<span class="class-dot" style="background:${cls.color}"></span><strong>${cls.label}</strong>${typeLabel ? `<span class="class-label">${typeLabel}</span>` : ''}<span class="class-time">· ${cls.upcoming ? 'Prochain' : cls.creneau} · ${timeLabel}</span>`;
+  const h = now.getHours(), m = now.getMinutes();
+  const nowMin = h * 60 + m;
+
+  edtColorRing(cours);
+
+  // Journée terminée ?
+  const dernierFin = edtToMin(cours[cours.length - 1].fin);
+  if (nowMin >= dernierFin) {
+    edtShowRest('✅', 'Journée terminée', `${cours.length} cours effectués`);
+    edtUpdateRing(cours, nowMin);
+    document.getElementById('edt-ring-wrap').style.opacity = '0.4';
+    return;
+  }
+
+  edtUpdateRing(cours, nowMin);
+  edtRenderStack(cours, nowMin);
 }
+
+// ── Simulateur EDT (dev only) ──
+function edtGetNow() {
+  if (edtSimTime) {
+    const d = new Date();
+    if (edtSimDay !== null) d.setDate(d.getDate() + (edtSimDay - d.getDay()));
+    d.setHours(edtSimTime[0], edtSimTime[1], 0, 0);
+    return d;
+  }
+  return new Date();
+}
+
+// La fonction updateCurrentClass utilise déjà edtGetNow() pour le simulateur
 
 updateCurrentClass();
 setInterval(updateCurrentClass, 30000);
+
+// Simulateur UI (visible uniquement en local)
+(function() {
+  if (!location.protocol.startsWith('file') && !location.hostname.match(/^(localhost|127\.)/)) return;
+  const sim = document.getElementById('edt-sim');
+  if (!sim) return;
+  sim.style.display = 'flex';
+
+  const scenarios = [
+    { label: '🔴 Réel', time: null, day: null },
+    { label: '7h50 (avant)', time: [7, 50], day: 1 },
+    { label: '8h30 (M1)', time: [8, 30], day: 1 },
+    { label: '9h07 (pause)', time: [9, 7], day: 1 },
+    { label: '10h30 (M3)', time: [10, 30], day: 1 },
+    { label: '12h20 (midi)', time: [12, 20], day: 1 },
+    { label: '14h55 (S2)', time: [14, 55], day: 1 },
+    { label: '16h00 (S3)', time: [16, 0], day: 1 },
+    { label: '17h00 (fin)', time: [17, 0], day: 1 },
+    { label: '☀️ Week-end', time: [10, 0], day: 6 },
+  ];
+
+  scenarios.forEach(s => {
+    const btn = document.createElement('button');
+    btn.textContent = s.label;
+    btn.style.cssText = 'padding:0.25rem 0.6rem; border-radius:6px; border:1px solid #475569; background:#334155; color:#e2e8f0; font-size:0.65rem; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s;';
+    btn.addEventListener('mouseenter', () => { btn.style.background = '#475569'; });
+    btn.addEventListener('mouseleave', () => { btn.style.background = s.time === edtSimTime ? '#3b82f6' : '#334155'; });
+    btn.addEventListener('click', () => {
+      edtSimTime = s.time;
+      edtSimDay = s.day;
+      edtStackIndex = -1;
+      edtLastColorKey = '';
+      updateCurrentClass();
+      sim.querySelectorAll('button').forEach(b => { b.style.background = '#334155'; b.style.borderColor = '#475569'; });
+      btn.style.background = '#3b82f6';
+      btn.style.borderColor = '#3b82f6';
+    });
+    sim.appendChild(btn);
+  });
+})();
 
 function getColorSet(colorName) {
   return ACCENT_COLORS[colorName] || ACCENT_COLORS.slate;
@@ -1290,7 +2018,7 @@ modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) clo
 
 document.getElementById('form-add-dashboard').addEventListener('click', function() { this.classList.toggle('active'); });
 
-function toggleCollapse() { state.collapsed = !state.collapsed; persist(); const b = document.querySelector('.collapse-toggle'), c = document.querySelector('.collapse-content'); if (b) b.classList.toggle('open'); if (c) c.classList.toggle('open'); }
+function toggleCollapse() { state.collapsed = !state.collapsed; persist(); const b = document.querySelector('.collapse-toggle'), c = document.querySelector('.collapse-content'); if (b) b.classList.toggle('open'); if (c) c.classList.toggle('open'); if (!state.collapsed && b) setTimeout(() => b.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
 
 // ── LIBRARY ──
 const libraryOverlay = document.getElementById('library-overlay');
