@@ -242,6 +242,131 @@
     .mc-back-class { font-size: 0.85rem; font-weight: 800; }
     .mc-back-slot { font-size: 0.55rem; opacity: 0.6; }
 
+    /* ── WIDGET RAPPELS (centre header) ── */
+    .rappels-widget {
+      display: none;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-width: 220px;
+      max-width: 280px;
+      max-height: 200px;
+    }
+
+    .rappels-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      padding: 0.3rem 0;
+    }
+
+    .rappels-header:hover .rappels-title {
+      color: rgba(255,255,255,0.9);
+    }
+
+    .rappels-icon {
+      font-size: 0.85rem;
+    }
+
+    .rappels-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      transition: color 0.2s;
+    }
+
+    .rappels-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      font-size: 0.6rem;
+      font-weight: 800;
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .rappels-count[data-count="0"] {
+      background: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.5);
+    }
+
+    .rappels-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow-y: auto;
+      max-height: 150px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
+    }
+
+    .rappels-list::-webkit-scrollbar { width: 3px; }
+    .rappels-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+    .rappel-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
+      font-size: 0.68rem;
+      color: rgba(255,255,255,0.85);
+      transition: background 0.2s;
+    }
+
+    .rappel-item:hover {
+      background: rgba(255,255,255,0.14);
+    }
+
+    .rappel-student {
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .rappel-text {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rappel-cat {
+      font-size: 0.58rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.12);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .rappels-empty {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.4);
+      padding: 0.3rem 0;
+      font-style: italic;
+    }
+
+    .rappels-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      padding-top: 0.2rem;
+      transition: color 0.2s;
+    }
+
+    .rappels-link:hover { color: rgba(255,255,255,0.7); }
+
     /* ── CERCLE EDT (droite du header) ── */
     .edt-ring-wrap {
       position: relative;
@@ -915,6 +1040,7 @@
     @media (max-width: 640px) {
       .header { padding: 1.25rem 1rem 3rem; }
       .header-inner { flex-direction: column; gap: 0.5rem; }
+      .rappels-widget { max-width: 100%; min-width: 0; }
       .clock-widget { text-align: left; }
       .clock-time { font-size: 2rem; }
       .greeting h1 { font-size: 1.35rem; }
@@ -946,6 +1072,16 @@
           </div>
         </div>
       </div>
+      <div class="rappels-widget" id="rappels-widget">
+        <div class="rappels-header" onclick="window.open('https://classboard.beltools.fr','_blank')">
+          <span class="rappels-icon">📋</span>
+          <span class="rappels-title">Rappels</span>
+          <span class="rappels-count" id="rappels-count" data-count="0">0</span>
+        </div>
+        <div class="rappels-list" id="rappels-list"></div>
+        <a class="rappels-link" href="https://classboard.beltools.fr" target="_blank">Ouvrir ClassBoard →</a>
+      </div>
+
       <div class="header-right">
         <div class="edt-ring-wrap" id="edt-ring-wrap">
           <svg class="edt-ring" id="edt-ring" viewBox="0 0 200 200"></svg>
@@ -1172,18 +1308,19 @@ function archivedTools() { return state.tools.filter(t => t.archived); }
 function isBuiltin(id) { return ALL_TOOLS.some(t => t.id === id); }
 
 const JOURS = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-const MOIS = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
+const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 function updateClock() { const n = new Date(); document.getElementById('clock').innerHTML = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}<span class="clock-seconds">:${String(n.getSeconds()).padStart(2,'0')}</span>`; }
-function updateDate() { const n = new Date(); document.getElementById('date').textContent = `${JOURS[n.getDay()]} ${n.getDate()} ${MOIS[n.getMonth()]} ${n.getFullYear()}`; }
+function updateDate() { let n; try { n = edtGetNow(); } catch (e) { n = new Date(); } document.getElementById('date').textContent = `${JOURS[n.getDay()]} ${n.getDate()} ${MOIS[n.getMonth()]} ${n.getFullYear()}`; }
 setInterval(updateClock, 1000); updateClock(); updateDate();
 
-// ── VACANCES SCOLAIRES — Académie de Nantes 2025-2026 ──
+// ── VACANCES SCOLAIRES — Académie de Nantes (zone B) 2026-2027 ──
 const VACANCES = [
-  { nom: 'Vacances de la Toussaint', debut: '2025-10-18', fin: '2025-11-03' },
-  { nom: 'Vacances de Noël', debut: '2025-12-20', fin: '2026-01-05' },
-  { nom: 'Vacances d\'hiver', debut: '2026-02-14', fin: '2026-03-02' },
-  { nom: 'Vacances de printemps', debut: '2026-04-11', fin: '2026-04-27' },
-  { nom: 'Vacances d\'été', debut: '2026-07-04', fin: '2026-09-01' },
+  { nom: 'Vacances de la Toussaint', debut: '2026-10-17', fin: '2026-11-02' },
+  { nom: 'Vacances de Noël', debut: '2026-12-19', fin: '2027-01-04' },
+  { nom: 'Vacances d\'hiver', debut: '2027-02-20', fin: '2027-03-08' },
+  { nom: 'Vacances de printemps', debut: '2027-04-17', fin: '2027-05-03' },
+  // Date de rentrée de septembre 2027 non encore publiée : estimation au 1er septembre
+  { nom: 'Vacances d\'été', debut: '2027-07-03', fin: '2027-09-01' },
 ];
 
 function getVacanceForDate(d) {
@@ -1199,56 +1336,56 @@ function getVacanceForDate(d) {
 // ── EMPLOI DU TEMPS ──
 const CLASSES_INFO = {
   '6A': { label: '6e A', color: '#3b82f6' },
-  '6C': { label: '6e C', color: '#3b82f6' },
+  '6D': { label: '6e D', color: '#3b82f6' },
   '5A': { label: '5e A', color: '#10b981' },
-  '5BD3': { label: '5e BD3', color: '#10b981' },
-  '4D': { label: '4e D', color: '#8b5cf6' },
+  '4A': { label: '4e A', color: '#8b5cf6' },
+  '4B': { label: '4e B', color: '#8b5cf6' },
 };
 
 const CRENEAUX = {
-  M1: { start: [8,10],  end: [9,5] },
-  M2: { start: [9,10],  end: [10,5] },
-  M3: { start: [10,20], end: [11,15] },
-  M4: { start: [11,20], end: [12,15] },
+  // Horaires officiels du collège (1ère sonnerie 5 min avant le début du cours)
+  M1: { start: [8,15],  end: [9,10] },
+  M2: { start: [9,15],  end: [10,10] },
+  M3: { start: [10,30], end: [11,25] },
+  M4: { start: [11,30], end: [12,25] },
   S1: { start: [13,50], end: [14,45] },
   S2: { start: [14,50], end: [15,45] },
-  S3: { start: [15,50], end: [16,45] },
+  S3: { start: [16,5],  end: [17,0] },
 };
 
+// EDT 2026-2027 — SA (semaine A) = SP (semaine ISO paire), SB = SI (impaire)
 const EDT = {
   1: { // lundi
-    M1: { classe: '6C' },
-    M2: { classe: '5BD3' },
+    M1: [{ classe: '4B', parity: 'SP' }, { classe: '5A', parity: 'SI' }],
+    M2: { classe: '6D' },
     M3: { classe: '6A' },
-    M4: [{ classe: '6C', type: 'devoirs-faits', parity: 'SP' }, { classe: '4D', parity: 'SI' }],
-    S1: { classe: '5BD3' },
+    M4: [{ classe: '4B', parity: 'SI' }],
+    S1: { classe: '4B' },
     S2: { classe: '5A' },
-    S3: { classe: '6C' },
+    S3: { classe: '4A' },
   },
   2: { // mardi
-    M1: { classe: '6A' },
-    M2: { classe: '5A' },
-    M3: { classe: '6C' },
-    M4: { classe: '4D' },
+    M2: { classe: '6A' },
+    M4: { classe: '6D' },
   },
   3: { // mercredi
-    M1: { classe: '6C' },
-    M2: { classe: '4D' },
-    M3: [{ classe: '5A', parity: 'SP' }, { classe: '6A', parity: 'SI' }],
-    M4: [{ classe: '6A', parity: 'SI' }],
+    M1: [{ classe: '4B', parity: 'SP' }, { classe: '4A', parity: 'SI' }],
+    M2: { classe: '4A' },
+    M3: { classe: '4B' },
   },
   4: { // jeudi
-    M1: { classe: '5A' },
-    M2: { classe: '5A', type: 'devoirs-faits' },
-    M3: { classe: '6A' },
-    M4: { classe: '4D' },
-    S1: [{ classe: '6C', parity: 'SP' }, { classe: '5BD3', parity: 'SI' }],
-    S2: [{ classe: '6C', parity: 'SP' }],
-    S3: [{ classe: '6C', type: 'devoirs-faits', parity: 'SP' }],
+    M1: [{ classe: '6A', groupe: 'P2', parity: 'SP' }, { classe: '6D', groupe: 'P2', parity: 'SI' }],
+    M2: [{ classe: '6A', groupe: 'Grp1', parity: 'SP' }, { classe: '6D', groupe: 'P1', parity: 'SI' }],
+    M3: { classe: '4A' },
+    M4: { classe: '6D' },
+    S1: { classe: '5A' },
+    S2: [{ classe: '6D', type: 'vie-de-classe', parity: 'SP' }],
+    S3: { classe: '5A' },
   },
   5: { // vendredi
     M1: { classe: '6A' },
-    M3: { classe: '5BD3' },
+    M2: { classe: '6D' },
+    M3: { classe: '6A' },
   },
 };
 
@@ -1288,7 +1425,7 @@ function getCurrentClass() {
       if (slot) {
         const info = CLASSES_INFO[slot.classe] || { label: slot.classe, color: '#94a3b8' };
         return {
-          label: info.label,
+          label: info.label + (slot.groupe ? ' · ' + slot.groupe : ''),
           color: info.color,
           creneau,
           type: slot.type || 'cours',
@@ -1314,7 +1451,7 @@ function getCurrentClass() {
     const info = CLASSES_INFO[nextSlot.classe] || { label: nextSlot.classe, color: '#94a3b8' };
     const sh = CRENEAUX[nextCreneau].start;
     return {
-      label: info.label,
+      label: info.label + (nextSlot.groupe ? ' · ' + nextSlot.groupe : ''),
       color: info.color,
       creneau: nextCreneau,
       type: nextSlot.type || 'cours',
@@ -1328,7 +1465,7 @@ function getCurrentClass() {
 
 // ── WIDGET EDT : Cercle SVG + Mini Stack ──
 
-const COLOR_MAP = { '6A': 'blue', '6C': 'blue', '5A': 'green', '5BD3': 'green', '4D': 'purple' };
+const COLOR_MAP = { '6A': 'blue', '6D': 'blue', '5A': 'green', '4A': 'purple', '4B': 'purple' };
 let edtSimTime = null;
 let edtSimDay = null;
 
@@ -1350,7 +1487,7 @@ function edtBuildCoursOfDay(now) {
       cours.push({
         id: creneau,
         classe: slot.classe,
-        label: info.label,
+        label: info.label + (slot.groupe ? ' · ' + slot.groupe : ''),
         hex: info.color,
         couleur: COLOR_MAP[slot.classe] || 'slate',
         type: slot.type || 'cours',
@@ -1370,20 +1507,20 @@ const EDT_SLOTS = ['M1','M2','M3','M4','S1','S2','S3'];
 
 // 14 segments fixes : 7 cours + 5 récré + 1 midi + 1 soirée
 const EDT_PARTS = [
-  { id: 'M1', type: 'cours', debut: [8,10],  fin: [9,5] },
-  { id: 'r1', type: 'recre', debut: [9,5],   fin: [9,10] },
-  { id: 'M2', type: 'cours', debut: [9,10],  fin: [10,5] },
-  { id: 'r2', type: 'recre', debut: [10,5],  fin: [10,20] },
-  { id: 'M3', type: 'cours', debut: [10,20], fin: [11,15] },
-  { id: 'r3', type: 'recre', debut: [11,15], fin: [11,20] },
-  { id: 'M4', type: 'cours', debut: [11,20], fin: [12,15] },
-  { id: 'midi',type:'midi',  debut: [12,15], fin: [13,50] },
+  { id: 'M1', type: 'cours', debut: [8,15],  fin: [9,10] },
+  { id: 'r1', type: 'recre', debut: [9,10],  fin: [9,15] },
+  { id: 'M2', type: 'cours', debut: [9,15],  fin: [10,10] },
+  { id: 'r2', type: 'recre', debut: [10,10], fin: [10,30] },
+  { id: 'M3', type: 'cours', debut: [10,30], fin: [11,25] },
+  { id: 'r3', type: 'recre', debut: [11,25], fin: [11,30] },
+  { id: 'M4', type: 'cours', debut: [11,30], fin: [12,25] },
+  { id: 'midi',type:'midi',  debut: [12,25], fin: [13,50] },
   { id: 'S1', type: 'cours', debut: [13,50], fin: [14,45] },
   { id: 'r4', type: 'recre', debut: [14,45], fin: [14,50] },
   { id: 'S2', type: 'cours', debut: [14,50], fin: [15,45] },
-  { id: 'r5', type: 'recre', debut: [15,45], fin: [15,50] },
-  { id: 'S3', type: 'cours', debut: [15,50], fin: [16,45] },
-  { id: 'soir',type:'soir',  debut: [16,45], fin: [18,10] },
+  { id: 'r5', type: 'recre', debut: [15,45], fin: [16,05] },
+  { id: 'S3', type: 'cours', debut: [16,05], fin: [17,0] },
+  { id: 'soir',type:'soir',  debut: [17,0],  fin: [18,10] },
 ];
 
 // Calculer durées et angles UNE SEULE FOIS
@@ -1609,7 +1746,7 @@ function edtCreateCard(cours, pos, nowMin) {
         <div class="mc-badge">${badgeText}</div>
         <div class="mc-class">${cours.label}</div>
       </div>
-      <div class="mc-slot">${cours.id} · ${edtFmtH(cours.debut)}–${edtFmtH(cours.fin)}${cours.type === 'devoirs-faits' ? ' · DF' : ''}</div>
+      <div class="mc-slot">${cours.id} · ${edtFmtH(cours.debut)}–${edtFmtH(cours.fin)}${cours.type === 'devoirs-faits' ? ' · DF' : cours.type === 'vie-de-classe' ? ' · VDC' : ''}</div>
       <div class="mc-progress">
         <div class="mc-bar"><div class="mc-bar-fill" style="width:${inCours ? pct : 0}%"></div></div>
         <div class="mc-time">${inCours ? (reste > 0 ? reste + ' min' : 'Terminé') : 'dans ' + (dMin - nowMin) + ' min'}</div>
@@ -1772,6 +1909,106 @@ function edtGetNow() {
 updateCurrentClass();
 setInterval(updateCurrentClass, 30000);
 
+// ── WIDGET RAPPELS (ClassBoard) ──
+const CLASSBOARD_URL = location.hostname.match(/^(localhost|127\.)/)
+  ? 'http://localhost:3000'
+  : 'https://classboard.beltools.fr';
+
+let rappelsLastClass = null;
+
+async function fetchRappels(className) {
+  const widget = document.getElementById('rappels-widget');
+  const countEl = document.getElementById('rappels-count');
+  const listEl = document.getElementById('rappels-list');
+
+  if (!className) {
+    widget.style.display = 'none';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${CLASSBOARD_URL}/api/dashboard/reminders?className=${className}`);
+    if (!res.ok) {
+      widget.style.display = 'none';
+      return;
+    }
+
+    const data = await res.json();
+    const reminders = data.reminders || [];
+    const count = reminders.length;
+
+    countEl.textContent = count;
+    countEl.dataset.count = count;
+
+    if (count === 0) {
+      listEl.innerHTML = '<div class="rappels-empty">Aucun rappel en attente</div>';
+    } else {
+      listEl.innerHTML = reminders.map(r => `
+        <div class="rappel-item">
+          <span class="rappel-student">${r.studentLastName}</span>
+          <span class="rappel-text">${r.text}</span>
+          ${r.categoryLabel ? `<span class="rappel-cat">${r.categoryIcon || ''} ${r.categoryLabel}</span>` : ''}
+        </div>
+      `).join('');
+    }
+
+    widget.style.display = 'flex';
+  } catch (e) {
+    // ClassBoard non accessible — masquer le widget silencieusement
+    widget.style.display = 'none';
+  }
+}
+
+// Rafraîchir les rappels à chaque changement de cours
+const origUpdateCurrentClass = updateCurrentClass;
+updateCurrentClass = function() {
+  origUpdateCurrentClass();
+  const now = (typeof edtGetNow === 'function') ? edtGetNow() : new Date();
+  const dow = now.getDay();
+  if (dow < 1 || dow > 5) {
+    document.getElementById('rappels-widget').style.display = 'none';
+    rappelsLastClass = null;
+    return;
+  }
+  const parity = getWeekParity(now);
+  const dayEdt = EDT[dow];
+  if (!dayEdt) return;
+
+  // Trouver la classe en cours ou la prochaine
+  const h = now.getHours(), m = now.getMinutes();
+  const nowMin = h * 60 + m;
+  let currentClassName = null;
+
+  for (const [creneau, times] of Object.entries(CRENEAUX)) {
+    const startMin = times.start[0] * 60 + times.start[1];
+    const endMin = times.end[0] * 60 + times.end[1];
+    if (nowMin >= startMin && nowMin < endMin) {
+      const slot = getSlotForWeek(dayEdt[creneau], parity);
+      if (slot) currentClassName = slot.classe;
+      break;
+    }
+    // Prochain cours (dans les 15 min)
+    if (nowMin >= startMin - 15 && nowMin < startMin) {
+      const slot = getSlotForWeek(dayEdt[creneau], parity);
+      if (slot) currentClassName = slot.classe;
+      break;
+    }
+  }
+
+  if (currentClassName && currentClassName !== rappelsLastClass) {
+    rappelsLastClass = currentClassName;
+    fetchRappels(currentClassName);
+  } else if (!currentClassName) {
+    document.getElementById('rappels-widget').style.display = 'none';
+    rappelsLastClass = null;
+  }
+};
+
+// Premier appel
+updateCurrentClass();
+// TEST : forcer le fetch pour voir le widget (à retirer après)
+fetchRappels('5A');
+
 // Simulateur UI (visible uniquement en local)
 (function() {
   if (!location.protocol.startsWith('file') && !location.hostname.match(/^(localhost|127\.)/)) return;
@@ -1803,6 +2040,7 @@ setInterval(updateCurrentClass, 30000);
       edtSimDay = s.day;
       edtStackIndex = -1;
       edtLastColorKey = '';
+      updateDate();
       updateCurrentClass();
       sim.querySelectorAll('button').forEach(b => { b.style.background = '#334155'; b.style.borderColor = '#475569'; });
       btn.style.background = '#3b82f6';
