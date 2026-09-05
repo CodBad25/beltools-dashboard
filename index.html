@@ -306,6 +306,15 @@
       transform: rotate(90deg);
     }
 
+    /* Séparateur de classe, quand les rappels de plusieurs classes sont cumulés */
+    .rappels-group {
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.45);
+      padding: 3px 0 1px;
+    }
+
     .rappels-body {
       display: flex;
       flex-direction: column;
@@ -1102,7 +1111,7 @@
       <div class="rappels-widget collapsed" id="rappels-widget">
         <div class="rappels-header" id="rappels-header" title="Afficher ou masquer les rappels">
           <span class="rappels-icon">📋</span>
-          <span class="rappels-title">Rappels</span>
+          <span class="rappels-title" id="rappels-title">Rappels</span>
           <span class="rappels-count" id="rappels-count" data-count="0">0</span>
           <span class="rappels-chevron">▸</span>
         </div>
@@ -1861,9 +1870,54 @@ function edtShowRingRest(emoji) {
 
 function edtResetRing() {
   document.getElementById('edt-ring-wrap').style.opacity = '1';
+  document.getElementById('edt-legend').style.opacity = '';
   const needle = document.getElementById('edt-needle');
   if (needle) needle.style.display = '';
   document.getElementById('edt-ring-time').style.fontSize = '';
+}
+
+// ── Aperçu du prochain jour de cours ──
+// Hors cours (week-end, vacances, soirée), l'horloge affiche la journée à venir
+// en grisé plutôt que de rester vide.
+
+// Jour actuellement présenté en aperçu, null quand on est dans une journée de cours.
+let edtPreviewDay = null;
+
+function edtNextSchoolDay(from) {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  for (let i = 0; i < 90; i++) {
+    d.setDate(d.getDate() + 1);
+    const dow = d.getDay();
+    if (dow < 1 || dow > 5) continue;
+    if (getVacanceForDate(d)) continue;
+    if (edtBuildCoursOfDay(d).length > 0) return d;
+  }
+  return null;
+}
+
+function edtShowPreview(now) {
+  const day = edtNextSchoolDay(now);
+  edtPreviewDay = day;
+  if (!day) return null;
+
+  const cours = edtBuildCoursOfDay(day);
+  edtColorRing(cours);
+
+  const wrap = document.getElementById('edt-ring-wrap');
+  wrap.style.opacity = '0.45';
+  const needle = document.getElementById('edt-needle');
+  if (needle) needle.style.display = 'none';
+
+  const ringTime = document.getElementById('edt-ring-time');
+  ringTime.textContent = JOURS[day.getDay()];
+  ringTime.style.fontSize = '0.95rem';
+  ringTime.style.color = 'rgba(255,255,255,0.8)';
+  document.getElementById('edt-ring-slot').textContent = 'aperçu';
+
+  // nowMin = -1 : aucun créneau n'est marqué comme passé ni comme actif
+  edtUpdateLegend(cours, -1, null);
+  document.getElementById('edt-legend').style.opacity = '0.55';
+  return cours;
 }
 
 // ── Fonction principale de mise à jour ──
@@ -1871,6 +1925,7 @@ function updateCurrentClass() {
   const el = document.getElementById('current-class');
   el.style.display = 'none';
   const now = (typeof edtGetNow === 'function') ? edtGetNow() : new Date();
+  edtPreviewDay = null;
 
   // Dessiner le cercle fixe au premier appel
   edtInitRing();
@@ -1883,15 +1938,17 @@ function updateCurrentClass() {
     const jours = Math.max(0, Math.round((fin.getTime() - today.getTime()) / 86400000));
     const sub = jours === 0 ? 'Dernier jour' : `Encore ${jours} jour${jours > 1 ? 's' : ''}`;
     edtShowRest('🏖️', vacance.nom, sub);
-    edtShowRingRest('🏖️');
+    if (!edtShowPreview(now)) edtShowRingRest('🏖️');
     return;
   }
 
   // Week-end ?
   const dow = now.getDay();
   if (dow === 0 || dow === 6) {
-    edtShowRest('☀️', 'Week-end', 'Reprise lundi');
-    edtShowRingRest('☀️');
+    const suite = edtShowPreview(now);
+    const jour = edtPreviewDay ? JOURS[edtPreviewDay.getDay()].toLowerCase() : 'lundi';
+    edtShowRest('☀️', 'Week-end', `Reprise ${jour}${suite ? ` · ${suite.length} cours` : ''}`);
+    if (!suite) edtShowRingRest('☀️');
     return;
   }
 
@@ -1901,7 +1958,7 @@ function updateCurrentClass() {
   const cours = edtBuildCoursOfDay(now);
   if (cours.length === 0) {
     edtShowRest('📭', 'Pas de cours', 'Journée libre');
-    edtShowRingRest('📭');
+    if (!edtShowPreview(now)) edtShowRingRest('📭');
     return;
   }
 
@@ -1913,9 +1970,14 @@ function updateCurrentClass() {
   // Journée terminée ?
   const dernierFin = edtToMin(cours[cours.length - 1].fin);
   if (nowMin >= dernierFin) {
-    edtShowRest('✅', 'Journée terminée', `${cours.length} cours effectués`);
-    edtUpdateRing(cours, nowMin);
-    document.getElementById('edt-ring-wrap').style.opacity = '0.4';
+    const suite = edtShowPreview(now);
+    const jour = edtPreviewDay ? JOURS[edtPreviewDay.getDay()].toLowerCase() : null;
+    edtShowRest('✅', 'Journée terminée',
+      suite ? `${jour} : ${suite.length} cours` : `${cours.length} cours effectués`);
+    if (!suite) {
+      edtUpdateRing(cours, nowMin);
+      document.getElementById('edt-ring-wrap').style.opacity = '0.4';
+    }
     return;
   }
 
@@ -1944,7 +2006,8 @@ const CLASSBOARD_URL = location.hostname.match(/^(localhost|127\.)/)
   ? 'http://localhost:3000'
   : 'https://classboard.beltools.fr';
 
-let rappelsLastClass = null;
+// Clé de ce qui est actuellement chargé : nom de classe en cours, ou 'preview:<jour>:<classes>'
+let rappelsLastKey = null;
 
 // Pliage du widget rappels — replié par défaut (le dashboard est souvent projeté).
 const RAPPELS_COLLAPSE_KEY = 'beltools_rappels_collapsed';
@@ -1964,10 +2027,70 @@ function setRappelsCollapsed(collapsed) {
   });
 })();
 
+function rappelItemHtml(r) {
+  return `
+        <div class="rappel-item">
+          <span class="rappel-student">${r.studentLastName}</span>
+          <span class="rappel-text">${r.text}</span>
+          ${r.categoryLabel ? `<span class="rappel-cat">${r.categoryIcon || ''} ${r.categoryLabel}</span>` : ''}
+        </div>`;
+}
+
+async function loadRappels(className) {
+  const res = await fetch(`${CLASSBOARD_URL}/api/dashboard/reminders?className=${className}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.reminders || [];
+}
+
+// Hors cours : rappels cumulés de toutes les classes du prochain jour, groupés par classe.
+async function fetchRappelsJour(classNames, jourLabel) {
+  const widget = document.getElementById('rappels-widget');
+  const countEl = document.getElementById('rappels-count');
+  const listEl = document.getElementById('rappels-list');
+  const titleEl = document.getElementById('rappels-title');
+
+  if (!classNames || classNames.length === 0) {
+    widget.style.display = 'none';
+    return;
+  }
+
+  try {
+    const reponses = await Promise.all(
+      classNames.map(async (cn) => ({ cn, reminders: await loadRappels(cn) }))
+    );
+
+    // Si aucune classe n'a répondu, ClassBoard est injoignable : ne rien afficher
+    // plutôt que d'annoncer à tort « aucun rappel ».
+    if (reponses.every((r) => r.reminders === null)) {
+      widget.style.display = 'none';
+      return;
+    }
+
+    const groupes = reponses.filter((g) => g.reminders && g.reminders.length > 0);
+    const total = groupes.reduce((s, g) => s + g.reminders.length, 0);
+    countEl.textContent = total;
+    countEl.dataset.count = total;
+    titleEl.textContent = `Rappels · ${jourLabel.toLowerCase()}`;
+
+    listEl.innerHTML = total === 0
+      ? '<div class="rappels-empty">Aucun rappel en attente</div>'
+      : groupes.map((g) => {
+          const info = CLASSES_INFO[g.cn] || { label: g.cn };
+          return `<div class="rappels-group">${info.label}</div>` + g.reminders.map(rappelItemHtml).join('');
+        }).join('');
+
+    widget.style.display = 'flex';
+  } catch (e) {
+    widget.style.display = 'none';
+  }
+}
+
 async function fetchRappels(className) {
   const widget = document.getElementById('rappels-widget');
   const countEl = document.getElementById('rappels-count');
   const listEl = document.getElementById('rappels-list');
+  document.getElementById('rappels-title').textContent = 'Rappels';
 
   if (!className) {
     widget.style.display = 'none';
@@ -1975,14 +2098,11 @@ async function fetchRappels(className) {
   }
 
   try {
-    const res = await fetch(`${CLASSBOARD_URL}/api/dashboard/reminders?className=${className}`);
-    if (!res.ok) {
+    const reminders = await loadRappels(className);
+    if (reminders === null) {
       widget.style.display = 'none';
       return;
     }
-
-    const data = await res.json();
-    const reminders = data.reminders || [];
     const count = reminders.length;
 
     countEl.textContent = count;
@@ -2013,42 +2133,49 @@ updateCurrentClass = function() {
   origUpdateCurrentClass();
   const now = (typeof edtGetNow === 'function') ? edtGetNow() : new Date();
   const dow = now.getDay();
-  if (dow < 1 || dow > 5) {
-    document.getElementById('rappels-widget').style.display = 'none';
-    rappelsLastClass = null;
+
+  // Classe en cours (ou démarrant dans moins de 15 min), le jour même
+  let currentClassName = null;
+  const dayEdt = (dow >= 1 && dow <= 5 && !getVacanceForDate(now)) ? EDT[dow] : null;
+  if (dayEdt) {
+    const parity = getWeekParity(now);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    for (const [creneau, times] of Object.entries(CRENEAUX)) {
+      const startMin = times.start[0] * 60 + times.start[1];
+      const endMin = times.end[0] * 60 + times.end[1];
+      if (nowMin >= startMin && nowMin < endMin) {
+        const slot = getSlotForWeek(dayEdt[creneau], parity);
+        if (slot) currentClassName = slot.classe;
+        break;
+      }
+      // Prochain cours (dans les 15 min)
+      if (nowMin >= startMin - 15 && nowMin < startMin) {
+        const slot = getSlotForWeek(dayEdt[creneau], parity);
+        if (slot) currentClassName = slot.classe;
+        break;
+      }
+    }
+  }
+
+  if (currentClassName) {
+    if (currentClassName !== rappelsLastKey) {
+      rappelsLastKey = currentClassName;
+      fetchRappels(currentClassName);
+    }
     return;
   }
-  const parity = getWeekParity(now);
-  const dayEdt = EDT[dow];
-  if (!dayEdt) return;
 
-  // Trouver la classe en cours ou la prochaine
-  const h = now.getHours(), m = now.getMinutes();
-  const nowMin = h * 60 + m;
-  let currentClassName = null;
-
-  for (const [creneau, times] of Object.entries(CRENEAUX)) {
-    const startMin = times.start[0] * 60 + times.start[1];
-    const endMin = times.end[0] * 60 + times.end[1];
-    if (nowMin >= startMin && nowMin < endMin) {
-      const slot = getSlotForWeek(dayEdt[creneau], parity);
-      if (slot) currentClassName = slot.classe;
-      break;
-    }
-    // Prochain cours (dans les 15 min)
-    if (nowMin >= startMin - 15 && nowMin < startMin) {
-      const slot = getSlotForWeek(dayEdt[creneau], parity);
-      if (slot) currentClassName = slot.classe;
-      break;
-    }
-  }
-
-  if (currentClassName && currentClassName !== rappelsLastClass) {
-    rappelsLastClass = currentClassName;
-    fetchRappels(currentClassName);
-  } else if (!currentClassName) {
+  // Hors cours : rappels cumulés du jour affiché en aperçu par l'horloge
+  if (!edtPreviewDay) {
     document.getElementById('rappels-widget').style.display = 'none';
-    rappelsLastClass = null;
+    rappelsLastKey = null;
+    return;
+  }
+  const classes = [...new Set(edtBuildCoursOfDay(edtPreviewDay).map(c => c.classe))];
+  const key = `preview:${edtPreviewDay.toDateString()}:${classes.join(',')}`;
+  if (key !== rappelsLastKey) {
+    rappelsLastKey = key;
+    fetchRappelsJour(classes, JOURS[edtPreviewDay.getDay()]);
   }
 };
 
