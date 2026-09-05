@@ -294,6 +294,33 @@
       color: rgba(255,255,255,0.5);
     }
 
+    /* Replié par défaut : seul l'en-tête reste visible, les noms des élèves
+       ne s'affichent que sur demande (dashboard souvent projeté en classe). */
+    .rappels-chevron {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.4);
+      transition: transform 0.2s;
+    }
+
+    .rappels-widget:not(.collapsed) .rappels-chevron {
+      transform: rotate(90deg);
+    }
+
+    .rappels-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-height: 0;
+    }
+
+    .rappels-widget.collapsed .rappels-body {
+      display: none;
+    }
+
+    .rappels-widget.collapsed {
+      max-height: none;
+    }
+
     .rappels-list {
       display: flex;
       flex-direction: column;
@@ -1072,14 +1099,17 @@
           </div>
         </div>
       </div>
-      <div class="rappels-widget" id="rappels-widget">
-        <div class="rappels-header" onclick="window.open('https://classboard.beltools.fr','_blank')">
+      <div class="rappels-widget collapsed" id="rappels-widget">
+        <div class="rappels-header" id="rappels-header" title="Afficher ou masquer les rappels">
           <span class="rappels-icon">📋</span>
           <span class="rappels-title">Rappels</span>
           <span class="rappels-count" id="rappels-count" data-count="0">0</span>
+          <span class="rappels-chevron">▸</span>
         </div>
-        <div class="rappels-list" id="rappels-list"></div>
-        <a class="rappels-link" href="https://classboard.beltools.fr" target="_blank">Ouvrir ClassBoard →</a>
+        <div class="rappels-body">
+          <div class="rappels-list" id="rappels-list"></div>
+          <a class="rappels-link" href="https://classboard.beltools.fr" target="_blank">Ouvrir ClassBoard →</a>
+        </div>
       </div>
 
       <div class="header-right">
@@ -1915,6 +1945,24 @@ const CLASSBOARD_URL = location.hostname.match(/^(localhost|127\.)/)
   : 'https://classboard.beltools.fr';
 
 let rappelsLastClass = null;
+
+// Pliage du widget rappels — replié par défaut (le dashboard est souvent projeté).
+const RAPPELS_COLLAPSE_KEY = 'beltools_rappels_collapsed';
+
+function setRappelsCollapsed(collapsed) {
+  document.getElementById('rappels-widget').classList.toggle('collapsed', collapsed);
+  try { localStorage.setItem(RAPPELS_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch {}
+}
+
+(function initRappelsToggle() {
+  let collapsed = true;
+  try { collapsed = localStorage.getItem(RAPPELS_COLLAPSE_KEY) !== '0'; } catch {}
+  const widget = document.getElementById('rappels-widget');
+  widget.classList.toggle('collapsed', collapsed);
+  document.getElementById('rappels-header').addEventListener('click', () => {
+    setRappelsCollapsed(!widget.classList.contains('collapsed'));
+  });
+})();
 
 async function fetchRappels(className) {
   const widget = document.getElementById('rappels-widget');
