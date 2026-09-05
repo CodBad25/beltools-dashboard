@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prototype — Header combiné Stack + Cercle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER (copié de index.html) ── */
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 2rem 1.5rem 3.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%; right: -20%;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Colonne gauche : Greeting + Stack ── */
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .greeting h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+
+    .greeting h1 span {
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .greeting .date {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 400;
+    }
+
+    /* ── Mini Stack (sous le greeting) ── */
+    .mini-stack {
+      margin-top: 0.75rem;
+      position: relative;
+      perspective: 600px;
+      height: 90px;
+      width: 260px;
+    }
+
+    .mini-card {
+      position: absolute;
+      left: 0;
+      width: 260px;
+      border-radius: 14px;
+      padding: 0.7rem 1rem;
+      transform-origin: top left;
+      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      will-change: transform, opacity;
+    }
+
+    .mini-card[data-pos="0"] {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      z-index: 10;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+
+    .mini-card[data-pos="1"] {
+      transform: translateY(10px) scale(0.96) translateX(5px);
+      opacity: 0.5;
+      z-index: 9;
+      filter: blur(0.5px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .mini-card[data-pos="2"] {
+      transform: translateY(18px) scale(0.92) translateX(10px);
+      opacity: 0.25;
+      z-index: 8;
+      filter: blur(1px);
+      box-shadow: none;
+    }
+
+    .mini-card[data-pos="hidden"] {
+      transform: translateY(24px) scale(0.88) translateX(14px);
+      opacity: 0;
+      z-index: 7;
+      pointer-events: none;
+    }
+
+    .mini-card.exiting {
+      transform: translateX(-120%) translateY(-5px) scale(0.9) !important;
+      opacity: 0 !important;
+      transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      z-index: 20 !important;
+    }
+
+    /* Couleurs cartes */
+    .mini-card-blue { background: linear-gradient(145deg, #1e3a5f 0%, #1d4ed8 100%); color: #fff; }
+    .mini-card-green { background: linear-gradient(145deg, #064e3b 0%, #059669 100%); color: #fff; }
+    .mini-card-purple { background: linear-gradient(145deg, #2e1065 0%, #7c3aed 100%); color: #fff; }
+
+    .mini-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mini-card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.55rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      padding: 0.15rem 0.5rem;
+    }
+
+    .mini-card-badge::before {
+      content: '';
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    .mini-card-class {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .mini-card-slot {
+      font-size: 0.65rem;
+      opacity: 0.7;
+    }
+
+    .mini-card-progress {
+      margin-top: 0.45rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mini-card-bar {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mini-card-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.85);
+      transition: width 1s linear;
+    }
+
+    .mini-card-time {
+      font-size: 0.6rem;
+      font-weight: 700;
+      opacity: 0.85;
+      white-space: nowrap;
+    }
+
+    /* Cartes arrière */
+    .mini-card-back-class {
+      font-size: 0.95rem;
+      font-weight: 800;
+    }
+    .mini-card-back-slot {
+      font-size: 0.6rem;
+      opacity: 0.6;
+    }
+
+    /* ── Colonne droite : Cercle + Horloge ── */
+    .header-right {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.5rem;
+    }
+
+    /* ── Cercle EDT ── */
+    .ring-container {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+
+    svg.ring {
+      width: 140px;
+      height: 140px;
+      transform: rotate(-90deg);
+      overflow: visible;
+    }
+
+    .ring-bg {
+      fill: none;
+      stroke: rgba(255,255,255,0.08);
+      stroke-width: 12;
+    }
+
+    .segment {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: butt;
+      transition: stroke-width 0.4s ease, filter 0.4s ease, opacity 0.4s ease;
+      opacity: 0.45;
+    }
+
+    .segment.active {
+      stroke-width: 16;
+      opacity: 1;
+      filter: drop-shadow(0 0 6px currentColor);
+    }
+
+    .segment.past {
+      opacity: 0.2;
+    }
+
+    .needle-dot {
+      fill: #fff;
+      filter: drop-shadow(0 0 4px #fff);
+    }
+
+    @keyframes pulse-needle {
+      0%, 100% { r: 4; opacity: 1; }
+      50% { r: 6; opacity: 0.7; }
+    }
+    .needle-pulse { animation: pulse-needle 1.8s ease-in-out infinite; }
+
+    /* Centre du cercle */
+    .ring-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .ring-center-time {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    .ring-center-slot {
+      font-size: 0.55rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Horloge (originale) ── */
+    .clock-widget { text-align: right; }
+
+    .clock-time {
+      font-size: 3rem;
+      font-weight: 200;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+
+    .clock-seconds {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.3);
+      font-weight: 300;
+    }
+
+    /* ── Grille factice pour contexte ── */
+    .fake-grid {
+      max-width: 1100px;
+      margin: -1.5rem auto 0;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .fake-card {
+      background: #fff;
+      border-radius: 16px;
+      height: 120px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    /* ── Contrôles démo ── */
+    .demo-controls {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .demo-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .demo-btn:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .demo-btn.active {
+      background: #1e293b;
+      color: #fff;
+      border-color: #1e293b;
+    }
+
+    /* ── États repos (vacances, week-end, etc.) ── */
+    .rest-state {
+      display: none;
+      margin-top: 0.75rem;
+    }
+
+    .rest-state.visible {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .rest-icon {
+      font-size: 1.3rem;
+    }
+
+    .rest-text {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .rest-sub {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.7rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-inner">
+      <!-- Gauche : Greeting + Stack -->
+      <div class="header-left">
+        <div class="greeting">
+          <h1>Bonjour <span>M.Belhaj</span></h1>
+          <div class="date">Lundi 2 mars 2026</div>
+        </div>
+
+        <!-- Mini Stack -->
+        <div class="mini-stack" id="mini-stack"></div>
+
+        <!-- État repos (vacances/weekend) -->
+        <div class="rest-state" id="rest-state">
+          <span class="rest-icon" id="rest-icon"></span>
+          <div>
+            <div class="rest-text" id="rest-text"></div>
+            <div class="rest-sub" id="rest-sub"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Droite : Cercle + Horloge -->
+      <div class="header-right">
+        <div class="ring-container" id="ring-container">
+          <svg class="ring" id="svgRing" viewBox="0 0 140 140">
+            <circle class="ring-bg" cx="70" cy="70" r="55" />
+            <g id="segments"></g>
+            <circle id="needle" class="needle-dot needle-pulse" cx="70" cy="15" r="4" />
+          </svg>
+          <div class="ring-center">
+            <div class="ring-center-time" id="ring-time">10h30</div>
+            <div class="ring-center-slot" id="ring-slot">M3</div>
+          </div>
+        </div>
+
+        <div class="clock-widget">
+          <div class="clock-time" id="clock">12<span class="clock-seconds">:34</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grille factice -->
+  <div class="fake-grid">
+    <div class="fake-card"></div>
+    <div class="fake-card"></div>
+    <div class="fake-card"></div>
+    <div class="fake-card"></div>
+    <div class="fake-card"></div>
+    <div class="fake-card"></div>
+  </div>
+
+  <!-- Contrôles de démo -->
+  <div class="demo-controls">
+    <button class="demo-btn active" onclick="setEtat('en-cours')">En cours (M3 10h30)</button>
+    <button class="demo-btn" onclick="setEtat('pause')">Pause (10h05)</button>
+    <button class="demo-btn" onclick="setEtat('avant')">Avant 1er cours (7h50)</button>
+    <button class="demo-btn" onclick="setEtat('fin')">Journée terminée (17h)</button>
+    <button class="demo-btn" onclick="setEtat('weekend')">Week-end</button>
+    <button class="demo-btn" onclick="setEtat('vacances')">Vacances</button>
+    <button class="demo-btn" onclick="simulerTransition()">⏭ Transition suivante</button>
+  </div>
+
+<script>
+// ─── Données ──────────────────────────────────────────────────────────────────
+const COURS = [
+  { id: 'M1', debut: [8,10],  fin: [9,5],   classe: '6e C',   couleur: 'blue',   hex: '#3b82f6' },
+  { id: 'M2', debut: [9,10],  fin: [10,5],  classe: '5e BD3', couleur: 'green',  hex: '#10b981' },
+  { id: 'M3', debut: [10,20], fin: [11,15], classe: '6e A',   couleur: 'blue',   hex: '#3b82f6' },
+  { id: 'M4', debut: [11,20], fin: [12,15], classe: '4e D',   couleur: 'purple', hex: '#8b5cf6' },
+  { id: 'S1', debut: [13,50], fin: [14,45], classe: '5e BD3', couleur: 'green',  hex: '#10b981' },
+  { id: 'S2', debut: [14,50], fin: [15,45], classe: '5e A',   couleur: 'green',  hex: '#10b981' },
+  { id: 'S3', debut: [15,50], fin: [16,45], classe: '6e C',   couleur: 'blue',   hex: '#3b82f6' },
+];
+
+const JOUR_DEBUT = [7, 30];
+const JOUR_FIN = [17, 30];
+
+function toMin([h, m]) { return h * 60 + m; }
+function fmtH([h, m]) { return `${h}h${String(m).padStart(2, '0')}`; }
+function fmtHeure(h, m) { return `${h}h${String(m).padStart(2, '0')}`; }
+
+// ─── Cercle SVG ──────────────────────────────────────────────────────────────
+const R = 55, CX = 70, CY = 70;
+const segContainer = document.getElementById('segments');
+const needle = document.getElementById('needle');
+
+function minutesToAngle(minutes) {
+  const total = toMin(JOUR_FIN) - toMin(JOUR_DEBUT);
+  const offset = minutes - toMin(JOUR_DEBUT);
+  return (offset / total) * 360;
+}
+
+function polarToXY(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * (Math.PI / 180);
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const start = polarToXY(cx, cy, r, startAngle);
+  const end = polarToXY(cx, cy, r, endAngle);
+  const largeArc = (endAngle - startAngle) > 180 ? 1 : 0;
+  return `M ${start[0]} ${start[1]} A ${r} ${r} 0 ${largeArc} 1 ${end[0]} ${end[1]}`;
+}
+
+// Dessiner segments
+COURS.forEach(c => {
+  const aStart = minutesToAngle(toMin(c.debut));
+  const aEnd = minutesToAngle(toMin(c.fin));
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', describeArc(CX, CY, R, aStart, aEnd));
+  path.setAttribute('class', 'segment');
+  path.setAttribute('stroke', c.hex);
+  path.setAttribute('data-id', c.id);
+  segContainer.appendChild(path);
+});
+
+// ─── Mini Stack ──────────────────────────────────────────────────────────────
+let indexActuel = 2; // M3
+let animEnCours = false;
+
+function creerMiniCard(cours, pos, nowMin) {
+  const card = document.createElement('div');
+  card.className = `mini-card mini-card-${cours.couleur}`;
+  card.dataset.pos = pos >= 3 ? 'hidden' : String(pos);
+  card.dataset.id = cours.id;
+
+  if (pos === 0) {
+    const debutMin = toMin(cours.debut);
+    const finMin = toMin(cours.fin);
+    const total = finMin - debutMin;
+    const ecoule = Math.max(0, Math.min(total, nowMin - debutMin));
+    const pct = Math.round((ecoule / total) * 100);
+    const reste = finMin - nowMin;
+
+    card.innerHTML = `
+      <div class="mini-card-top">
+        <div>
+          <div class="mini-card-badge">En cours</div>
+        </div>
+        <div class="mini-card-class">${cours.classe}</div>
+      </div>
+      <div class="mini-card-slot">${cours.id} · ${fmtH(cours.debut)}–${fmtH(cours.fin)}</div>
+      <div class="mini-card-progress">
+        <div class="mini-card-bar"><div class="mini-card-bar-fill" style="width:${pct}%"></div></div>
+        <div class="mini-card-time">${reste > 0 ? reste + ' min' : 'Terminé'}</div>
+      </div>
+    `;
+  } else {
+    card.innerHTML = `
+      <div class="mini-card-back-class">${cours.classe}</div>
+      <div class="mini-card-back-slot">${cours.id} · ${fmtH(cours.debut)}–${fmtH(cours.fin)}</div>
+    `;
+  }
+
+  return card;
+}
+
+function rendreStack(nowMin) {
+  const stack = document.getElementById('mini-stack');
+  stack.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const idx = indexActuel + i;
+    if (idx >= COURS.length) break;
+    stack.appendChild(creerMiniCard(COURS[idx], i, nowMin));
+  }
+}
+
+// ─── Mise à jour cercle ──────────────────────────────────────────────────────
+function updateRing(nowMin) {
+  // Aiguille
+  const angle = minutesToAngle(nowMin);
+  const [nx, ny] = polarToXY(CX, CY, R, angle + 90);
+  needle.setAttribute('cx', nx);
+  needle.setAttribute('cy', ny);
+
+  // Segments actifs/passés
+  const coursActuel = COURS.find(c => nowMin >= toMin(c.debut) && nowMin < toMin(c.fin));
+  document.querySelectorAll('.segment').forEach(el => {
+    const c = COURS.find(x => x.id === el.dataset.id);
+    const isActive = coursActuel && el.dataset.id === coursActuel.id;
+    const isPast = c && toMin(c.fin) <= nowMin;
+    el.classList.toggle('active', isActive);
+    el.classList.toggle('past', isPast && !isActive);
+  });
+
+  // Centre
+  const ringTime = document.getElementById('ring-time');
+  const ringSlot = document.getElementById('ring-slot');
+  const h = Math.floor(nowMin / 60);
+  const m = nowMin % 60;
+  ringTime.textContent = fmtHeure(h, m);
+
+  if (coursActuel) {
+    ringSlot.textContent = coursActuel.id;
+    ringTime.style.color = coursActuel.hex;
+  } else {
+    ringSlot.textContent = '';
+    ringTime.style.color = '#fff';
+  }
+}
+
+// ─── Horloge réelle ──────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours();
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').innerHTML = `${h}<span class="clock-seconds">:${m}</span>`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── États ───────────────────────────────────────────────────────────────────
+let etatActuel = 'en-cours';
+
+function setEtat(etat) {
+  etatActuel = etat;
+  // Boutons démo
+  document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.demo-btn[onclick="setEtat('${etat}')"]`);
+  if (btn) btn.classList.add('active');
+
+  const stack = document.getElementById('mini-stack');
+  const rest = document.getElementById('rest-state');
+  const ringContainer = document.getElementById('ring-container');
+
+  // Reset
+  stack.style.display = '';
+  rest.classList.remove('visible');
+  ringContainer.style.opacity = '1';
+
+  switch (etat) {
+    case 'en-cours': {
+      indexActuel = 2;
+      const nowMin = toMin([10, 30]);
+      rendreStack(nowMin);
+      updateRing(nowMin);
+      break;
+    }
+    case 'pause': {
+      indexActuel = 2;
+      const nowMin = toMin([10, 8]);
+      rendreStack(nowMin);
+      updateRing(nowMin);
+      // En pause, la carte du prochain cours n'a pas le badge "En cours"
+      const topCard = stack.querySelector('.mini-card[data-pos="0"]');
+      if (topCard) {
+        const badge = topCard.querySelector('.mini-card-badge');
+        if (badge) { badge.textContent = '⏸ Pause'; badge.style.cssText = ''; }
+        // Recalc avec prochain cours
+        const c = COURS[indexActuel];
+        const debutMin = toMin(c.debut);
+        const dans = debutMin - nowMin;
+        const timeEl = topCard.querySelector('.mini-card-time');
+        if (timeEl) timeEl.textContent = `dans ${dans} min`;
+        const barFill = topCard.querySelector('.mini-card-bar-fill');
+        if (barFill) barFill.style.width = '0%';
+      }
+      break;
+    }
+    case 'avant': {
+      indexActuel = 0;
+      const nowMin = toMin([7, 50]);
+      rendreStack(nowMin);
+      updateRing(nowMin);
+      const topCard = stack.querySelector('.mini-card[data-pos="0"]');
+      if (topCard) {
+        const badge = topCard.querySelector('.mini-card-badge');
+        if (badge) badge.textContent = 'Prochain';
+        const c = COURS[0];
+        const dans = toMin(c.debut) - nowMin;
+        const timeEl = topCard.querySelector('.mini-card-time');
+        if (timeEl) timeEl.textContent = `dans ${dans} min`;
+        const barFill = topCard.querySelector('.mini-card-bar-fill');
+        if (barFill) barFill.style.width = '0%';
+      }
+      break;
+    }
+    case 'fin': {
+      stack.style.display = 'none';
+      rest.classList.add('visible');
+      document.getElementById('rest-icon').textContent = '✅';
+      document.getElementById('rest-text').textContent = 'Journée terminée';
+      document.getElementById('rest-sub').textContent = '7 cours effectués';
+      updateRing(toMin([17, 0]));
+      ringContainer.style.opacity = '0.4';
+      break;
+    }
+    case 'weekend': {
+      stack.style.display = 'none';
+      rest.classList.add('visible');
+      document.getElementById('rest-icon').textContent = '☀️';
+      document.getElementById('rest-text').textContent = 'Week-end';
+      document.getElementById('rest-sub').textContent = 'Reprise lundi 8h10';
+      ringContainer.style.opacity = '0.15';
+      // Effacer segments actifs
+      document.querySelectorAll('.segment').forEach(el => {
+        el.classList.remove('active', 'past');
+        el.style.opacity = '0.1';
+      });
+      needle.style.display = 'none';
+      document.getElementById('ring-time').textContent = '☀️';
+      document.getElementById('ring-time').style.color = '#fff';
+      document.getElementById('ring-time').style.fontSize = '1.5rem';
+      document.getElementById('ring-slot').textContent = '';
+      break;
+    }
+    case 'vacances': {
+      stack.style.display = 'none';
+      rest.classList.add('visible');
+      document.getElementById('rest-icon').textContent = '🏖️';
+      document.getElementById('rest-text').textContent = 'Vacances d\'hiver';
+      document.getElementById('rest-sub').textContent = 'Reprise le 2 mars · 5 jours';
+      ringContainer.style.opacity = '0.15';
+      document.querySelectorAll('.segment').forEach(el => {
+        el.classList.remove('active', 'past');
+        el.style.opacity = '0.1';
+      });
+      needle.style.display = 'none';
+      document.getElementById('ring-time').textContent = '🏖️';
+      document.getElementById('ring-time').style.color = '#fff';
+      document.getElementById('ring-time').style.fontSize = '1.5rem';
+      document.getElementById('ring-slot').textContent = '';
+      break;
+    }
+  }
+
+  // Reset ring visuals for non-rest states
+  if (!['weekend', 'vacances'].includes(etat)) {
+    needle.style.display = '';
+    document.querySelectorAll('.segment').forEach(el => {
+      el.style.opacity = '';
+    });
+    document.getElementById('ring-time').style.fontSize = '';
+  }
+}
+
+// ─── Transition stack ────────────────────────────────────────────────────────
+function simulerTransition() {
+  if (animEnCours || indexActuel + 1 >= COURS.length) return;
+  animEnCours = true;
+
+  const stack = document.getElementById('mini-stack');
+  const top = stack.querySelector('.mini-card[data-pos="0"]');
+  if (top) top.classList.add('exiting');
+
+  setTimeout(() => {
+    indexActuel++;
+    const nowMin = toMin(COURS[indexActuel].debut) + 10; // 10 min dans le cours
+    rendreStack(nowMin);
+    updateRing(nowMin);
+
+    // Animation entrée
+    const nouvelle = stack.querySelector('.mini-card[data-pos="0"]');
+    if (nouvelle) {
+      nouvelle.style.transition = 'none';
+      nouvelle.style.transform = 'translateY(10px) scale(0.96)';
+      nouvelle.style.opacity = '0.5';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          nouvelle.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          nouvelle.style.transform = 'translateY(0) scale(1)';
+          nouvelle.style.opacity = '1';
+        });
+      });
+    }
+
+    setTimeout(() => { animEnCours = false; }, 400);
+  }, 450);
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+setEtat('en-cours');
+</script>
+</body>
+</html>

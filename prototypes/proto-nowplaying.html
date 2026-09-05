@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proto Now Playing – EDT</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f172a;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── Label section ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      padding: 0 4px;
+    }
+
+    /* ── Carte principale ── */
+    .card-now {
+      background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 20px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: box-shadow 0.4s ease;
+    }
+
+    /* Glow dynamique injecté via JS */
+    .card-now::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 20px;
+      padding: 1px;
+      background: var(--glow-border, transparent);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      transition: background 0.6s ease;
+    }
+
+    .card-now::after {
+      content: '';
+      position: absolute;
+      bottom: -60px;
+      right: -60px;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: var(--glow-blob, rgba(59,130,246,0.12));
+      filter: blur(40px);
+      pointer-events: none;
+      transition: background 0.6s ease;
+    }
+
+    /* Badge "EN COURS" */
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 20px;
+    }
+
+    .badge-live .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.75); }
+    }
+
+    /* Icône niveau + infos */
+    .now-main {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .level-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      transition: background 0.5s ease, box-shadow 0.5s ease;
+    }
+
+    .level-icon .niveau-text {
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0.75;
+      display: block;
+      text-align: center;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+
+    .level-icon .classe-big {
+      font-size: 20px;
+      font-weight: 900;
+      display: block;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .now-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .now-classe {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 0.4s ease;
+    }
+
+    .now-creneau {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    .now-matiere {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    /* Barre de progression */
+    .progress-section {
+      position: relative;
+    }
+
+    .progress-track {
+      height: 5px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1s linear, background 0.5s ease;
+      position: relative;
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: inherit;
+      box-shadow: 0 0 8px currentColor;
+      transition: background 0.5s ease;
+    }
+
+    .progress-times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #475569;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-times .elapsed {
+      color: #94a3b8;
+    }
+
+    /* Résumé textuel */
+    .progress-summary {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+
+    .progress-summary strong {
+      color: #94a3b8;
+    }
+
+    /* ── Section "À suivre" ── */
+    .card-next {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: default;
+      transition: background 0.2s ease;
+    }
+
+    .card-next:hover {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .mini-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 9px;
+      font-weight: 800;
+      color: #fff;
+      opacity: 0.9;
+    }
+
+    .mini-icon .niveau-text { font-size: 8px; font-weight: 700; opacity: 0.75; display: block; text-align: center; line-height: 1; margin-bottom: 1px; }
+    .mini-icon .classe-big  { font-size: 13px; font-weight: 900; display: block; text-align: center; line-height: 1; }
+
+    .mini-info { flex: 1; min-width: 0; }
+    .mini-classe { font-size: 15px; font-weight: 700; }
+    .mini-creneau { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    .mini-arrow {
+      font-size: 16px;
+      color: #334155;
+    }
+
+    /* ── Section "Cours passés" ── */
+    .passed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-past {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0.5;
+    }
+
+    .past-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.4);
+    }
+
+    .past-info { flex: 1; }
+    .past-classe  { font-size: 13px; font-weight: 600; color: #475569; }
+    .past-creneau { font-size: 11px; color: #334155; margin-top: 1px; }
+
+    .past-check {
+      font-size: 13px;
+      color: #334155;
+    }
+
+    /* ── Animations d'entrée ── */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-now    { animation: fade-up 0.5s ease both; }
+    .card-next   { animation: fade-up 0.5s 0.1s ease both; }
+    .passed-list { animation: fade-up 0.5s 0.2s ease both; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ── EN COURS ── -->
+  <span class="section-label">En cours</span>
+
+  <div class="card-now" id="cardNow">
+    <div class="badge-live">
+      <span class="dot"></span>
+      En cours
+    </div>
+
+    <div class="now-main">
+      <div class="level-icon" id="nowIcon">
+        <span>
+          <span class="niveau-text" id="nowNiveau">6e</span>
+          <span class="classe-big" id="nowClasseBig">A</span>
+        </span>
+      </div>
+      <div class="now-info">
+        <div class="now-classe" id="nowClasse">6e A</div>
+        <div class="now-creneau" id="nowCreneau">M3 · 10h20 – 11h15</div>
+        <div class="now-matiere">Mathématiques</div>
+      </div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width: 32%; background: #3b82f6;"></div>
+      </div>
+      <div class="progress-times">
+        <span class="elapsed" id="elapsedLabel">10h30</span>
+        <span id="endLabel">11h15</span>
+      </div>
+      <div class="progress-summary" id="progressSummary">
+        <strong>18 min</strong> écoulées &nbsp;·&nbsp; <strong>37 min</strong> restantes
+      </div>
+    </div>
+  </div>
+
+  <!-- ── À SUIVRE ── -->
+  <span class="section-label" style="margin-top:8px;">À suivre</span>
+
+  <div class="card-next" id="cardNext">
+    <div class="mini-icon" id="nextIcon" style="background: #8b5cf6;">
+      <span>
+        <span class="niveau-text">4e</span>
+        <span class="classe-big">D</span>
+      </span>
+    </div>
+    <div class="mini-info">
+      <div class="mini-classe" id="nextClasse">4e D</div>
+      <div class="mini-creneau" id="nextCreneau">M4 · 11h20 – 12h15</div>
+    </div>
+    <div class="mini-arrow">›</div>
+  </div>
+
+  <!-- ── COURS PASSÉS ── -->
+  <span class="section-label" style="margin-top:8px;">Cours passés</span>
+
+  <div class="passed-list" id="passedList"></div>
+
+</div>
+
+<script>
+  // ── Données EDT lundi ──
+  const EDT = [
+    { id: 'M1', label: 'M1', debut: '8:10',  fin: '9:05',  classe: '6e C',  niveau: '6e', lettre: 'C', couleur: '#3b82f6' },
+    { id: 'M2', label: 'M2', debut: '9:10',  fin: '10:05', classe: '5e BD3', niveau: '5e', lettre: 'BD3', couleur: '#10b981' },
+    { id: 'M3', label: 'M3', debut: '10:20', fin: '11:15', classe: '6e A',  niveau: '6e', lettre: 'A', couleur: '#3b82f6' },
+    { id: 'M4', label: 'M4', debut: '11:20', fin: '12:15', classe: '4e D',  niveau: '4e', lettre: 'D', couleur: '#8b5cf6' },
+    { id: 'S1', label: 'S1', debut: '13:50', fin: '14:45', classe: '5e BD3', niveau: '5e', lettre: 'BD3', couleur: '#10b981' },
+    { id: 'S2', label: 'S2', debut: '14:50', fin: '15:45', classe: '5e A',  niveau: '5e', lettre: 'A', couleur: '#10b981' },
+    { id: 'S3', label: 'S3', debut: '15:50', fin: '16:45', classe: '6e C',  niveau: '6e', lettre: 'C', couleur: '#3b82f6' },
+  ];
+
+  // ── Heure simulée : lundi 10h30 ──
+  // Pour la démo on fixe l'heure simulée ; décommenter la ligne suivante pour utiliser l'heure réelle
+  const SIMULATED_H = 10, SIMULATED_M = 30;
+  function getNow() {
+    // Retourne {h, m} → heure simulée fixe pour la démo
+    return { h: SIMULATED_H, m: SIMULATED_M };
+  }
+
+  function parseTime(s) {
+    const [h, m] = s.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  function formatHHMM(totalMin) {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${h}h${String(m).padStart(2, '0')}`;
+  }
+
+  function buildCreneauLabel(cr) {
+    return `${cr.label} · ${cr.debut.replace(':', 'h')} – ${cr.fin.replace(':', 'h')}`;
+  }
+
+  // ── Couleur assombrie pour fond passé ──
+  function dimColor(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},0.18)`;
+  }
+
+  function hexToGlow(hex, alpha) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // ── Render ──
+  function render() {
+    const now = getNow();
+    const nowMin = now.h * 60 + now.m;
+
+    let currentIdx = -1;
+    for (let i = 0; i < EDT.length; i++) {
+      const d = parseTime(EDT[i].debut);
+      const f = parseTime(EDT[i].fin);
+      if (nowMin >= d && nowMin < f) { currentIdx = i; break; }
+    }
+
+    // Si aucun cours en cours → premier cours futur
+    let pastList  = [];
+    let current   = null;
+    let next      = null;
+
+    if (currentIdx !== -1) {
+      current  = EDT[currentIdx];
+      pastList = EDT.slice(0, currentIdx);
+      next     = EDT[currentIdx + 1] || null;
+    } else {
+      // Avant le premier cours ou entre deux créneaux → trouver prochain
+      const nextIdx = EDT.findIndex(cr => parseTime(cr.debut) > nowMin);
+      if (nextIdx !== -1) {
+        next = EDT[nextIdx];
+        pastList = EDT.slice(0, nextIdx);
+      } else {
+        pastList = [...EDT]; // journée terminée
+      }
+    }
+
+    // ── Carte principale ──
+    const cardNow = document.getElementById('cardNow');
+
+    if (current) {
+      const debut = parseTime(current.debut);
+      const fin   = parseTime(current.fin);
+      const duree = fin - debut;
+      const ecoule = nowMin - debut;
+      const reste  = fin - nowMin;
+      const pct    = Math.round((ecoule / duree) * 100);
+
+      document.getElementById('nowIcon').style.background = current.couleur;
+      document.getElementById('nowIcon').style.boxShadow  = `0 8px 24px ${hexToGlow(current.couleur, 0.45)}`;
+      document.getElementById('nowNiveau').textContent    = current.niveau;
+      document.getElementById('nowClasseBig').textContent = current.lettre;
+      document.getElementById('nowClasse').textContent    = current.classe;
+      document.getElementById('nowCreneau').textContent   = buildCreneauLabel(current);
+
+      document.getElementById('progressFill').style.width      = pct + '%';
+      document.getElementById('progressFill').style.background = current.couleur;
+      document.getElementById('elapsedLabel').textContent      = formatHHMM(nowMin);
+      document.getElementById('endLabel').textContent          = current.fin.replace(':', 'h');
+      document.getElementById('progressSummary').innerHTML =
+        `<strong>${ecoule} min</strong> écoulées &nbsp;·&nbsp; <strong>${reste} min</strong> restantes`;
+
+      // Glow border + blob
+      cardNow.style.setProperty('--glow-border', `linear-gradient(135deg, ${hexToGlow(current.couleur,0.5)}, transparent)`);
+      cardNow.style.setProperty('--glow-blob',   hexToGlow(current.couleur, 0.15));
+      cardNow.style.boxShadow = `0 0 40px ${hexToGlow(current.couleur, 0.12)}`;
+    } else {
+      // Pas de cours en ce moment
+      document.getElementById('nowClasse').textContent  = 'Aucun cours';
+      document.getElementById('nowCreneau').textContent = 'Pas de cours en ce moment';
+      document.getElementById('progressFill').style.width = '0%';
+      document.getElementById('progressSummary').textContent = '';
+      cardNow.style.setProperty('--glow-border', 'transparent');
+      cardNow.style.setProperty('--glow-blob',   'rgba(100,116,139,0.10)');
+    }
+
+    // ── À suivre ──
+    const cardNext = document.getElementById('cardNext');
+    if (next) {
+      cardNext.style.display = 'flex';
+      document.getElementById('nextIcon').style.background   = next.couleur;
+      document.getElementById('nextIcon').querySelector('.niveau-text').textContent = next.niveau;
+      document.getElementById('nextIcon').querySelector('.classe-big').textContent  = next.lettre;
+      document.getElementById('nextClasse').textContent  = next.classe;
+      document.getElementById('nextCreneau').textContent = buildCreneauLabel(next);
+    } else {
+      cardNext.style.display = 'none';
+    }
+
+    // ── Cours passés ──
+    const passedList = document.getElementById('passedList');
+    passedList.innerHTML = '';
+    pastList.forEach(cr => {
+      const div = document.createElement('div');
+      div.className = 'card-past';
+      div.innerHTML = `
+        <div class="past-icon" style="background:${dimColor(cr.couleur)};">
+          <span style="display:block; text-align:center; line-height:1;">
+            <span style="font-size:8px; font-weight:700; display:block; color:${cr.couleur}; opacity:0.7;">${cr.niveau}</span>
+            <span style="font-size:12px; font-weight:900; display:block; color:${cr.couleur}; opacity:0.6;">${cr.lettre}</span>
+          </span>
+        </div>
+        <div class="past-info">
+          <div class="past-classe">${cr.classe}</div>
+          <div class="past-creneau">${buildCreneauLabel(cr)}</div>
+        </div>
+        <div class="past-check">✓</div>
+      `;
+      passedList.appendChild(div);
+    });
+
+    // Masquer section "Cours passés" si vide
+    const sectionLabel = passedList.previousElementSibling;
+    const visible = pastList.length > 0;
+    passedList.style.display     = visible ? 'flex' : 'none';
+    sectionLabel.style.display   = visible ? 'block' : 'none';
+  }
+
+  render();
+
+  // Mise à jour chaque minute (utile si on passe en mode heure réelle)
+  setInterval(render, 60_000);
+</script>
+</body>
+</html>

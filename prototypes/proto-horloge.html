@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prototype — Horloge EDT</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+    }
+
+    h1 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+    }
+
+    .clock-container {
+      position: relative;
+      width: 300px;
+      height: 300px;
+    }
+
+    .clock-container svg {
+      width: 300px;
+      height: 300px;
+    }
+
+    /* Centre */
+    .clock-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .clock-center-time {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .clock-center-slot {
+      font-size: 0.7rem;
+      color: #64748b;
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* Légende */
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 300px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .legend-id { font-weight: 700; min-width: 22px; }
+    .legend-hours { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.7rem; }
+    .legend-dur { font-size: 0.65rem; opacity: 0.5; }
+  </style>
+</head>
+<body>
+
+  <h1>Horloge emploi du temps — Structure fixe</h1>
+
+  <div class="clock-container">
+    <svg viewBox="0 0 300 300" id="clock-svg"></svg>
+    <div class="clock-center">
+      <div class="clock-center-time">10h30</div>
+      <div class="clock-center-slot">M3</div>
+    </div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+<script>
+// ── Données fixes : créneaux + pauses + soirée ──
+const CX = 150, CY = 150, R = 120;
+const STROKE = 22;
+const GAP_DEG = 2; // écart entre chaque part
+
+// Structure fixe de la journée (minutes)
+const PARTS = [
+  { id: 'M1', type: 'cours', debut: [8,10],  fin: [9,5],   label: 'M1', color: '#3b82f6' },
+  { id: 'r1', type: 'recre', debut: [9,5],   fin: [9,10],  label: 'Récré' },
+  { id: 'M2', type: 'cours', debut: [9,10],  fin: [10,5],  label: 'M2', color: '#10b981' },
+  { id: 'r2', type: 'recre', debut: [10,5],  fin: [10,20], label: 'Récré' },
+  { id: 'M3', type: 'cours', debut: [10,20], fin: [11,15], label: 'M3', color: '#3b82f6' },
+  { id: 'r3', type: 'recre', debut: [11,15], fin: [11,20], label: 'Récré' },
+  { id: 'M4', type: 'cours', debut: [11,20], fin: [12,15], label: 'M4', color: '#8b5cf6' },
+  { id: 'midi',type:'midi',  debut: [12,15], fin: [13,50], label: 'Pause midi' },
+  { id: 'S1', type: 'cours', debut: [13,50], fin: [14,45], label: 'S1', color: '#10b981' },
+  { id: 'r4', type: 'recre', debut: [14,45], fin: [14,50], label: 'Récré' },
+  { id: 'S2', type: 'cours', debut: [14,50], fin: [15,45], label: 'S2', color: '#10b981' },
+  { id: 'r5', type: 'recre', debut: [15,45], fin: [15,50], label: 'Récré' },
+  { id: 'S3', type: 'cours', debut: [15,50], fin: [16,45], label: 'S3', color: '#3b82f6' },
+  { id: 'soir',type:'soir',  debut: [16,45], fin: [18,10], label: 'Soirée' },
+];
+
+function toMin(arr) { return arr[0] * 60 + arr[1]; }
+
+// Calculer les durées et angles
+const totalMin = PARTS.reduce((s, p) => s + (toMin(p.fin) - toMin(p.debut)), 0);
+const totalGapDeg = PARTS.length * GAP_DEG;
+const availDeg = 360 - totalGapDeg;
+
+let currentAngle = -90; // commence en haut (SVG: -90° = 12h)
+
+PARTS.forEach(p => {
+  p.durMin = toMin(p.fin) - toMin(p.debut);
+  p.degrees = (p.durMin / totalMin) * availDeg;
+  p.startAngle = currentAngle;
+  p.endAngle = currentAngle + p.degrees;
+  currentAngle = p.endAngle + GAP_DEG;
+});
+
+// ── Dessiner les arcs ──
+function polarToXY(cx, cy, r, angleDeg) {
+  const rad = angleDeg * (Math.PI / 180);
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function arcPath(cx, cy, r, startDeg, endDeg) {
+  const s = polarToXY(cx, cy, r, startDeg);
+  const e = polarToXY(cx, cy, r, endDeg);
+  const large = (endDeg - startDeg) > 180 ? 1 : 0;
+  return `M ${s[0]} ${s[1]} A ${r} ${r} 0 ${large} 1 ${e[0]} ${e[1]}`;
+}
+
+const svg = document.getElementById('clock-svg');
+
+// Fond anneau
+const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+bg.setAttribute('cx', CX);
+bg.setAttribute('cy', CY);
+bg.setAttribute('r', R);
+bg.setAttribute('fill', 'none');
+bg.setAttribute('stroke', '#1e293b');
+bg.setAttribute('stroke-width', STROKE + 2);
+svg.appendChild(bg);
+
+// Arcs
+PARTS.forEach(p => {
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', arcPath(CX, CY, R, p.startAngle, p.endAngle));
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke-linecap', 'butt');
+
+  if (p.type === 'cours') {
+    path.setAttribute('stroke', p.color);
+    path.setAttribute('stroke-width', STROKE);
+    path.setAttribute('opacity', '0.7');
+  } else if (p.type === 'recre') {
+    path.setAttribute('stroke', '#334155');
+    path.setAttribute('stroke-width', STROKE * 0.5);
+    path.setAttribute('opacity', '0.5');
+  } else if (p.type === 'midi') {
+    path.setAttribute('stroke', '#1e3a5f');
+    path.setAttribute('stroke-width', STROKE * 0.6);
+    path.setAttribute('opacity', '0.4');
+  } else if (p.type === 'soir') {
+    path.setAttribute('stroke', '#1e293b');
+    path.setAttribute('stroke-width', STROKE * 0.4);
+    path.setAttribute('opacity', '0.3');
+  }
+
+  path.setAttribute('data-id', p.id);
+  svg.appendChild(path);
+
+  // Étiquette pour les cours (au milieu de l'arc, à l'extérieur)
+  if (p.type === 'cours') {
+    const midAngle = (p.startAngle + p.endAngle) / 2;
+    const [lx, ly] = polarToXY(CX, CY, R + STROKE / 2 + 12, midAngle);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', lx);
+    txt.setAttribute('y', ly);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('dominant-baseline', 'central');
+    txt.setAttribute('fill', 'rgba(255,255,255,0.4)');
+    txt.setAttribute('font-size', '10');
+    txt.setAttribute('font-weight', '700');
+    txt.setAttribute('font-family', 'Inter, sans-serif');
+    txt.textContent = p.id;
+    svg.appendChild(txt);
+  }
+
+  // Étiquette début d'heure (petit trait + heure à l'intérieur)
+  if (p.type === 'cours') {
+    const [tx, ty] = polarToXY(CX, CY, R - STROKE / 2 - 14, p.startAngle);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', tx);
+    txt.setAttribute('y', ty);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('dominant-baseline', 'central');
+    txt.setAttribute('fill', 'rgba(255,255,255,0.25)');
+    txt.setAttribute('font-size', '8');
+    txt.setAttribute('font-family', 'Inter, sans-serif');
+    const h = p.debut[0], m = p.debut[1];
+    txt.textContent = `${h}h${m > 0 ? String(m).padStart(2,'0') : ''}`;
+    svg.appendChild(txt);
+  }
+});
+
+// Point blanc (aiguille) — position fixe pour le proto à 10h30
+const needleAngle = (() => {
+  const nowMin = 10 * 60 + 30;
+  for (const p of PARTS) {
+    const pDebut = toMin(p.debut), pFin = toMin(p.fin);
+    if (nowMin >= pDebut && nowMin < pFin) {
+      const pct = (nowMin - pDebut) / (pFin - pDebut);
+      return p.startAngle + pct * p.degrees;
+    }
+  }
+  return -90;
+})();
+
+const [nx, ny] = polarToXY(CX, CY, R, needleAngle);
+const needle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+needle.setAttribute('cx', nx);
+needle.setAttribute('cy', ny);
+needle.setAttribute('r', '6');
+needle.setAttribute('fill', '#fff');
+needle.setAttribute('filter', 'drop-shadow(0 0 6px #fff)');
+svg.appendChild(needle);
+
+// ── Légende ──
+const legendEl = document.getElementById('legend');
+PARTS.filter(p => p.type === 'cours' || p.type === 'midi').forEach(p => {
+  const div = document.createElement('div');
+  div.className = 'legend-item';
+  const dotColor = p.type === 'cours' ? p.color : '#1e3a5f';
+  const h1 = `${p.debut[0]}h${p.debut[1] > 0 ? String(p.debut[1]).padStart(2,'0') : ''}`;
+  const h2 = `${p.fin[0]}h${p.fin[1] > 0 ? String(p.fin[1]).padStart(2,'0') : ''}`;
+  div.innerHTML = `<span class="legend-dot" style="background:${dotColor}"></span><span class="legend-id">${p.id}</span><span>${p.label}</span><span class="legend-dur">${p.durMin} min</span><span class="legend-hours">${h1}–${h2}</span>`;
+  legendEl.appendChild(div);
+});
+</script>
+</body>
+</html>

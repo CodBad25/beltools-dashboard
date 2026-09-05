@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timeline circulaire — Emploi du temps</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wrapper {
+      position: relative;
+      width: 300px;
+      height: 300px;
+    }
+
+    svg.ring {
+      width: 300px;
+      height: 300px;
+      transform: rotate(-90deg);
+      overflow: visible;
+    }
+
+    /* Fond de l'anneau */
+    .ring-bg {
+      fill: none;
+      stroke: #1e293b;
+      stroke-width: 22;
+    }
+
+    /* Segments de cours */
+    .segment {
+      fill: none;
+      stroke-width: 22;
+      stroke-linecap: butt;
+      transition: stroke-width 0.4s ease, filter 0.4s ease, opacity 0.4s ease;
+      opacity: 0.55;
+    }
+
+    .segment.active {
+      stroke-width: 28;
+      opacity: 1;
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+
+    /* Pause entre cours */
+    .pause {
+      fill: none;
+      stroke: #334155;
+      stroke-width: 10;
+      stroke-linecap: butt;
+      opacity: 0.4;
+    }
+
+    /* Aiguille — point qui tourne */
+    .needle-dot {
+      fill: #fff;
+      filter: drop-shadow(0 0 6px #fff);
+    }
+
+    /* Centre */
+    .center-group {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .center-class {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      transition: color 0.5s ease;
+    }
+
+    .center-label {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 4px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .center-time {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .center-slot {
+      font-size: 11px;
+      color: #475569;
+      margin-top: 2px;
+    }
+
+    /* Légende */
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 300px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #1e293b;
+      transition: background 0.3s ease, transform 0.3s ease;
+      font-size: 13px;
+    }
+
+    .legend-item.active {
+      background: #1e3a5f;
+      transform: translateX(4px);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-slot {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 24px;
+    }
+
+    .legend-hours {
+      color: #475569;
+      font-size: 11px;
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend-class {
+      font-weight: 600;
+      flex: 1;
+    }
+
+    /* Badge "EN COURS" */
+    .badge-en-cours {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #0f172a;
+      background: #fff;
+      border-radius: 4px;
+      padding: 1px 5px;
+      text-transform: uppercase;
+    }
+
+    /* Animation pulsation sur l'aiguille */
+    @keyframes pulse-needle {
+      0%, 100% { r: 6; opacity: 1; }
+      50% { r: 9; opacity: 0.7; }
+    }
+
+    .needle-pulse {
+      animation: pulse-needle 1.8s ease-in-out infinite;
+    }
+
+    /* Heure simulée */
+    .sim-info {
+      font-size: 11px;
+      color: #475569;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Emploi du temps — Lundi</h1>
+
+<div class="wrapper">
+  <svg class="ring" id="svgRing" viewBox="0 0 300 300">
+    <!-- Fond anneau complet -->
+    <circle class="ring-bg" cx="150" cy="150" r="115" />
+
+    <!-- Segments cours (générés par JS) -->
+    <g id="segments"></g>
+
+    <!-- Aiguille -->
+    <circle id="needle" class="needle-dot needle-pulse" cx="150" cy="35" r="6" />
+  </svg>
+
+  <div class="center-group">
+    <div class="center-class" id="centerClass">—</div>
+    <div class="center-label" id="centerLabel">En cours</div>
+    <div class="center-time" id="centerTime">10h30</div>
+    <div class="center-slot" id="centerSlot">M3 · 10h20–11h15</div>
+  </div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="sim-info">⏱ Simulation : lundi 10h30</div>
+
+<script>
+// ─── Configuration ────────────────────────────────────────────────────────────
+
+const COURS = [
+  { id: 'M1', label: '8h10', fin: '9h05',   debut: [8,10],  finfin: [9,5],   classe: '6e C',   couleur: '#3b82f6' },
+  { id: 'M2', label: '9h10', fin: '10h05',  debut: [9,10],  finfin: [10,5],  classe: '5e BD3', couleur: '#10b981' },
+  { id: 'M3', label: '10h20',fin: '11h15',  debut: [10,20], finfin: [11,15], classe: '6e A',   couleur: '#3b82f6' },
+  { id: 'M4', label: '11h20',fin: '12h15',  debut: [11,20], finfin: [12,15], classe: '4e D',   couleur: '#8b5cf6' },
+  { id: 'S1', label: '13h50',fin: '14h45',  debut: [13,50], finfin: [14,45], classe: '5e BD3', couleur: '#10b981' },
+  { id: 'S2', label: '14h50',fin: '15h45',  debut: [14,50], finfin: [15,45], classe: '5e A',   couleur: '#10b981' },
+  { id: 'S3', label: '15h50',fin: '16h45',  debut: [15,50], finfin: [16,45], classe: '6e C',   couleur: '#3b82f6' },
+];
+
+// Plage de la journée affichée sur l'arc
+const JOUR_DEBUT = [7, 30];   // 7h30
+const JOUR_FIN   = [17, 30];  // 17h30
+
+// Simulation : on fige l'heure à 10h30
+const SIMULATION_HEURE = [10, 30];
+
+// ─── Utilitaires ─────────────────────────────────────────────────────────────
+
+function toMinutes([h, m]) {
+  return h * 60 + m;
+}
+
+function minutesToAngle(minutes) {
+  const total = toMinutes(JOUR_FIN) - toMinutes(JOUR_DEBUT);
+  const offset = minutes - toMinutes(JOUR_DEBUT);
+  return (offset / total) * 360;
+}
+
+function polarToXY(cx, cy, r, angleDeg) {
+  // angle 0 = haut (après rotate -90 sur le SVG, l'arc commence en haut)
+  const rad = (angleDeg - 90) * (Math.PI / 180);
+  return [
+    cx + r * Math.cos(rad),
+    cy + r * Math.sin(rad),
+  ];
+}
+
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  // Angle en degrés, 0 = droite (coordonnées SVG brutes, sans le rotate du parent)
+  const start = polarToXY(cx, cy, r, startAngle);
+  const end   = polarToXY(cx, cy, r, endAngle);
+  const largeArc = (endAngle - startAngle) > 180 ? 1 : 0;
+  return `M ${start[0]} ${start[1]} A ${r} ${r} 0 ${largeArc} 1 ${end[0]} ${end[1]}`;
+}
+
+function formatHeure([h, m]) {
+  return `${h}h${m.toString().padStart(2, '0')}`;
+}
+
+// ─── Rendu SVG ────────────────────────────────────────────────────────────────
+
+const R = 115;
+const CX = 150, CY = 150;
+const segContainer = document.getElementById('segments');
+
+COURS.forEach((c, i) => {
+  const aStart = minutesToAngle(toMinutes(c.debut));
+  const aEnd   = minutesToAngle(toMinutes(c.finfin));
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', describeArc(CX, CY, R, aStart, aEnd));
+  path.setAttribute('class', 'segment');
+  path.setAttribute('stroke', c.couleur);
+  path.setAttribute('data-id', c.id);
+  segContainer.appendChild(path);
+});
+
+// ─── Légende ─────────────────────────────────────────────────────────────────
+
+const legendEl = document.getElementById('legend');
+
+COURS.forEach(c => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.dataset.id = c.id;
+  item.innerHTML = `
+    <div class="legend-dot" style="background:${c.couleur}"></div>
+    <span class="legend-slot">${c.id}</span>
+    <span class="legend-class">${c.classe}</span>
+    <span class="legend-hours">${c.label}–${c.fin}</span>
+  `;
+  legendEl.appendChild(item);
+});
+
+// ─── Mise à jour en temps réel ────────────────────────────────────────────────
+
+const needle       = document.getElementById('needle');
+const centerClass  = document.getElementById('centerClass');
+const centerLabel  = document.getElementById('centerLabel');
+const centerTime   = document.getElementById('centerTime');
+const centerSlot   = document.getElementById('centerSlot');
+
+function update() {
+  // Heure simulée fixe
+  const now = toMinutes(SIMULATION_HEURE);
+
+  // Angle de l'aiguille
+  const angle = minutesToAngle(now);
+  const [nx, ny] = polarToXY(CX, CY, R, angle + 90); // +90 car le SVG est rotate(-90)
+  needle.setAttribute('cx', nx);
+  needle.setAttribute('cy', ny);
+
+  // Cours actuel
+  const coursActuel = COURS.find(c =>
+    now >= toMinutes(c.debut) && now < toMinutes(c.finfin)
+  );
+
+  // Mise à jour segments
+  document.querySelectorAll('.segment').forEach(el => {
+    const id = el.dataset.id;
+    const isActive = coursActuel && id === coursActuel.id;
+    el.classList.toggle('active', isActive);
+    // couleur via stroke déjà défini
+  });
+
+  // Mise à jour légende
+  document.querySelectorAll('.legend-item').forEach(el => {
+    const id = el.dataset.id;
+    const isActive = coursActuel && id === coursActuel.id;
+    el.classList.toggle('active', isActive);
+
+    // Supprimer ancien badge si présent
+    const oldBadge = el.querySelector('.badge-en-cours');
+    if (oldBadge) oldBadge.remove();
+
+    if (isActive) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-en-cours';
+      badge.textContent = 'En cours';
+      badge.style.background = coursActuel.couleur;
+      el.appendChild(badge);
+    }
+  });
+
+  // Centre
+  if (coursActuel) {
+    centerClass.textContent  = coursActuel.classe;
+    centerClass.style.color  = coursActuel.couleur;
+    centerLabel.textContent  = 'En cours';
+    centerSlot.textContent   = `${coursActuel.id} · ${coursActuel.label}–${coursActuel.fin}`;
+  } else {
+    // Pause ou hors plage
+    const prochain = COURS.find(c => now < toMinutes(c.debut));
+    if (prochain) {
+      centerClass.textContent = prochain.classe;
+      centerClass.style.color = '#64748b';
+      centerLabel.textContent = 'Prochain cours';
+      centerSlot.textContent  = `${prochain.id} · ${prochain.label}`;
+    } else {
+      centerClass.textContent = '—';
+      centerClass.style.color = '#64748b';
+      centerLabel.textContent = 'Fin de journée';
+      centerSlot.textContent  = '';
+    }
+  }
+
+  centerTime.textContent = formatHeure(SIMULATION_HEURE);
+}
+
+// Lancer + boucle (en vrai le temps avancerait)
+update();
+// Pour la simulation, on ne met pas d'intervalle de mise à jour de l'heure.
+// On anime quand même le pulsation de l'aiguille via CSS.
+
+// ─── Mini animation d'entrée des segments ────────────────────────────────────
+
+document.querySelectorAll('.segment').forEach((el, i) => {
+  el.style.opacity = '0';
+  el.style.transition = `opacity 0.4s ease ${i * 0.08}s, stroke-width 0.4s ease, filter 0.4s ease`;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.opacity = el.classList.contains('active') ? '1' : '0.55';
+    });
+  });
+});
+</script>
+</body>
+</html>

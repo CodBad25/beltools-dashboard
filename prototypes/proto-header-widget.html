@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proto — Header Widget EDT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a14;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    /* ─────────────────────────────────────────
+       HEADER PRINCIPAL
+    ───────────────────────────────────────── */
+    .dashboard-header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+    }
+
+    /* Bruit de texture subtil */
+    .dashboard-header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    /* ── Greeting (gauche) ── */
+    .header-greeting {
+      flex: 0 0 auto;
+    }
+    .greeting-name {
+      font-size: 22px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+    .greeting-date {
+      font-size: 13px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.45);
+      margin-top: 4px;
+      letter-spacing: 0.1px;
+    }
+
+    /* ── Horloge (droite) ── */
+    .header-clock {
+      flex: 0 0 auto;
+      text-align: right;
+    }
+    .clock-time {
+      font-size: 28px;
+      font-weight: 200;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: 2px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .clock-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      text-align: right;
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ─────────────────────────────────────────
+       WIDGET EDT — CENTRAL
+    ───────────────────────────────────────── */
+    .edt-widget {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .edt-arc-container {
+      position: relative;
+      width: 180px;
+      height: 76px;
+      overflow: visible;
+    }
+
+    .edt-arc-container svg {
+      overflow: visible;
+    }
+
+    /* Ligne de statut sous l'arc */
+    .edt-status-line {
+      font-size: 11.5px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.75);
+      text-align: center;
+      white-space: nowrap;
+      letter-spacing: 0.1px;
+      line-height: 1;
+    }
+    .edt-status-line .class-name {
+      font-weight: 700;
+    }
+    .edt-status-line .muted {
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* ── Séparateur section démo ── */
+    .demo-section {
+      padding: 48px 32px 32px;
+    }
+    .demo-title {
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.25);
+      margin-bottom: 24px;
+    }
+    .demo-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* Carte d'état pour la démo */
+    .demo-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-width: 220px;
+    }
+    .demo-card-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 500;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      align-self: flex-start;
+      margin-bottom: 4px;
+    }
+
+    /* État simple (week-end / vacances) */
+    .edt-simple {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 400;
+    }
+    .edt-simple .emoji { font-size: 16px; }
+    .edt-simple .sep { color: rgba(255,255,255,0.25); }
+
+    /* Pulse animé pour le curseur */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; r: 4; }
+      50% { opacity: 0.6; r: 5.5; }
+    }
+    @keyframes ring-pulse {
+      0% { opacity: 0.6; r: 6; }
+      100% { opacity: 0; r: 11; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     HEADER PRINCIPAL (état simulé : 13h09, lundi)
+══════════════════════════════════════════════════════ -->
+<header class="dashboard-header">
+  <!-- Greeting -->
+  <div class="header-greeting">
+    <div class="greeting-name">Bonjour M.Belhaj</div>
+    <div class="greeting-date">Lundi 2 mars 2026</div>
+  </div>
+
+  <!-- Widget EDT central — 13h09 = pause entre M4 (fin 12h15) et S1 (début 13h50) -->
+  <div class="edt-widget" id="main-widget">
+    <div class="edt-arc-container">
+      <svg id="main-arc" width="180" height="76" viewBox="0 0 180 80">
+        <!-- Rendu par JS -->
+      </svg>
+    </div>
+    <div class="edt-status-line" id="main-status"></div>
+  </div>
+
+  <!-- Horloge -->
+  <div class="header-clock">
+    <div class="clock-time" id="clock-time">13:09</div>
+    <div class="clock-label">Aujourd'hui</div>
+  </div>
+</header>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION DÉMO — Comparaison des états
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-title">Comparaison des états</div>
+  <div class="demo-row">
+
+    <!-- État "En cours" — 10h30 → M3 6e A -->
+    <div class="demo-card">
+      <div class="demo-card-label">En cours · 10h30</div>
+      <div class="edt-arc-container">
+        <svg id="arc-encours" width="180" height="76" viewBox="0 0 180 80"></svg>
+      </div>
+      <div class="edt-status-line" id="status-encours"></div>
+    </div>
+
+    <!-- État "Pause" — 13h09 (même que le header) -->
+    <div class="demo-card">
+      <div class="demo-card-label">Pause · 13h09</div>
+      <div class="edt-arc-container">
+        <svg id="arc-pause" width="180" height="76" viewBox="0 0 180 80"></svg>
+      </div>
+      <div class="edt-status-line" id="status-pause"></div>
+    </div>
+
+    <!-- État "Journée terminée" — 17h00 -->
+    <div class="demo-card">
+      <div class="demo-card-label">Journée terminée · 17h00</div>
+      <div class="edt-arc-container">
+        <svg id="arc-fin" width="180" height="76" viewBox="0 0 180 80"></svg>
+      </div>
+      <div class="edt-status-line" id="status-fin"></div>
+    </div>
+
+    <!-- État "Week-end" -->
+    <div class="demo-card">
+      <div class="demo-card-label">Week-end</div>
+      <div class="edt-simple">
+        <span class="emoji">☀️</span>
+        <span>Week-end</span>
+        <span class="sep">·</span>
+        <span style="color:rgba(255,255,255,0.4); font-size:11px;">Lundi dans 1j</span>
+      </div>
+    </div>
+
+    <!-- État "Vacances" -->
+    <div class="demo-card">
+      <div class="demo-card-label">Vacances</div>
+      <div class="edt-simple">
+        <span class="emoji">🏖️</span>
+        <span>Vacances d'hiver</span>
+        <span class="sep">·</span>
+        <span style="color:rgba(255,255,255,0.4); font-size:11px;">3 jours</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   DONNÉES EDT — Lundi
+   ══════════════════════════════════════════════════════════ */
+const COURS_LUNDI = [
+  { id: 'M1', label: 'M1', classe: '6e C',    debut: '08:10', fin: '09:05', couleur: '#3B82F6' }, // bleu
+  { id: 'M2', label: 'M2', classe: '5e BD3',  debut: '09:10', fin: '10:05', couleur: '#10B981' }, // vert
+  { id: 'M3', label: 'M3', classe: '6e A',    debut: '10:10', fin: '11:05', couleur: '#3B82F6' }, // bleu
+  { id: 'M4', label: 'M4', classe: '4e D',    debut: '11:10', fin: '12:15', couleur: '#8B5CF6' }, // violet
+  { id: 'S1', label: 'S1', classe: '5e BD3',  debut: '13:50', fin: '14:45', couleur: '#10B981' }, // vert
+  { id: 'S2', label: 'S2', classe: '5e A',    debut: '14:50', fin: '15:45', couleur: '#10B981' }, // vert
+  { id: 'S3', label: 'S3', classe: '6e C',    debut: '15:50', fin: '16:45', couleur: '#3B82F6' }, // bleu
+];
+
+/* Convertit "HH:MM" en minutes depuis minuit */
+function toMin(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/* Journée : 8h10 → 16h45 */
+const JOUR_DEBUT = toMin('08:10');
+const JOUR_FIN   = toMin('16:45');
+const JOUR_DUREE = JOUR_FIN - JOUR_DEBUT; // 515 min
+
+/* Trouve le cours actif ou la pause à une heure donnée (en minutes) */
+function getState(nowMin) {
+  // Avant la journée
+  if (nowMin < JOUR_DEBUT) {
+    const next = COURS_LUNDI[0];
+    return { type: 'avant', next };
+  }
+  // Après la journée
+  if (nowMin >= JOUR_FIN) {
+    return { type: 'fin' };
+  }
+  // En cours ?
+  for (const c of COURS_LUNDI) {
+    const d = toMin(c.debut), f = toMin(c.fin);
+    if (nowMin >= d && nowMin < f) {
+      const restant = f - nowMin;
+      return { type: 'encours', cours: c, restant };
+    }
+  }
+  // Pause : trouver le prochain
+  for (let i = 0; i < COURS_LUNDI.length; i++) {
+    if (nowMin < toMin(COURS_LUNDI[i].debut)) {
+      const next = COURS_LUNDI[i];
+      const prev = i > 0 ? COURS_LUNDI[i - 1] : null;
+      const dans = toMin(next.debut) - nowMin;
+      return { type: 'pause', prev, next, dans };
+    }
+  }
+  return { type: 'fin' };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDU SVG DE L'ARC
+   ══════════════════════════════════════════════════════════ */
+
+const CX = 90, CY = 76, R = 60; // centre et rayon
+
+/* Angle en degrés depuis le début de la journée (0° = gauche, 180° = droite) */
+function minToAngle(min) {
+  const frac = (min - JOUR_DEBUT) / JOUR_DUREE; // 0..1
+  return -180 + frac * 180; // -180° (9h) → 0° (fin)
+}
+
+/* Point sur le cercle */
+function arcPoint(angleDeg, r) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return {
+    x: CX + r * Math.cos(rad),
+    y: CY + r * Math.sin(rad),
+  };
+}
+
+/* Trace un arc SVG */
+function arcPath(startAngle, endAngle, r) {
+  const s = arcPoint(startAngle, r);
+  const e = arcPoint(endAngle, r);
+  const large = (endAngle - startAngle) > 180 ? 1 : 0;
+  return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
+}
+
+function renderArc(svgEl, nowMin, opts = {}) {
+  const { highlightCurrent = true } = opts;
+  svgEl.innerHTML = '';
+
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const state = getState(nowMin);
+  const isFin = state.type === 'fin';
+
+  /* ── Piste de fond (arc gris) ── */
+  const trackPath = arcPath(-180, 0, R);
+  const track = document.createElementNS(ns, 'path');
+  track.setAttribute('d', trackPath);
+  track.setAttribute('fill', 'none');
+  track.setAttribute('stroke', 'rgba(255,255,255,0.08)');
+  track.setAttribute('stroke-width', '3');
+  track.setAttribute('stroke-linecap', 'round');
+  svgEl.appendChild(track);
+
+  /* ── Segments de cours ── */
+  for (const c of COURS_LUNDI) {
+    const a1 = minToAngle(toMin(c.debut));
+    const a2 = minToAngle(toMin(c.fin));
+    const isCurrent = state.type === 'encours' && state.cours.id === c.id;
+    const isFutur = nowMin < toMin(c.debut);
+
+    const segPath = document.createElementNS(ns, 'path');
+    segPath.setAttribute('d', arcPath(a1, a2, R));
+    segPath.setAttribute('fill', 'none');
+
+    let couleur = isFin ? 'rgba(255,255,255,0.2)' : c.couleur;
+    let opacity = isFutur && !isFin ? 0.35 : 1;
+    let strokeW = isCurrent && highlightCurrent ? '5' : '3.5';
+
+    segPath.setAttribute('stroke', couleur);
+    segPath.setAttribute('stroke-width', strokeW);
+    segPath.setAttribute('stroke-linecap', 'round');
+    segPath.setAttribute('opacity', opacity);
+
+    /* Glow pour le cours en cours */
+    if (isCurrent && highlightCurrent) {
+      const filterId = `glow-${svgEl.id}`;
+      let defs = svgEl.querySelector('defs');
+      if (!defs) { defs = document.createElementNS(ns, 'defs'); svgEl.insertBefore(defs, svgEl.firstChild); }
+      defs.innerHTML = `
+        <filter id="${filterId}" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>`;
+      segPath.setAttribute('filter', `url(#${filterId})`);
+    }
+
+    svgEl.appendChild(segPath);
+
+    /* Étiquette (M1, M2...) */
+    const midMin = (toMin(c.debut) + toMin(c.fin)) / 2;
+    const midAngle = minToAngle(midMin);
+    const labelR = R + 13;
+    const lp = arcPoint(midAngle, labelR);
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', lp.x);
+    lbl.setAttribute('y', lp.y);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('dominant-baseline', 'middle');
+    lbl.setAttribute('font-size', '7');
+    lbl.setAttribute('font-family', 'Inter, system-ui');
+    lbl.setAttribute('font-weight', isCurrent ? '700' : '400');
+    lbl.setAttribute('fill', isCurrent && highlightCurrent ? couleur : 'rgba(255,255,255,0.35)');
+    lbl.textContent = c.label;
+    svgEl.appendChild(lbl);
+  }
+
+  /* ── Curseur de position actuelle ── */
+  if (!isFin && nowMin >= JOUR_DEBUT && nowMin <= JOUR_FIN) {
+    const curAngle = minToAngle(nowMin);
+    const cp = arcPoint(curAngle, R);
+
+    /* Anneau pulsant */
+    const ring = document.createElementNS(ns, 'circle');
+    ring.setAttribute('cx', cp.x);
+    ring.setAttribute('cy', cp.y);
+    ring.setAttribute('r', '7');
+    ring.setAttribute('fill', 'none');
+    ring.setAttribute('stroke', 'rgba(255,255,255,0.25)');
+    ring.setAttribute('stroke-width', '1');
+    const ringAnim = document.createElementNS(ns, 'animate');
+    ringAnim.setAttribute('attributeName', 'r');
+    ringAnim.setAttribute('values', '5;11;5');
+    ringAnim.setAttribute('dur', '2.4s');
+    ringAnim.setAttribute('repeatCount', 'indefinite');
+    const ringFade = document.createElementNS(ns, 'animate');
+    ringFade.setAttribute('attributeName', 'opacity');
+    ringFade.setAttribute('values', '0.5;0;0.5');
+    ringFade.setAttribute('dur', '2.4s');
+    ringFade.setAttribute('repeatCount', 'indefinite');
+    ring.appendChild(ringAnim);
+    ring.appendChild(ringFade);
+    svgEl.appendChild(ring);
+
+    /* Point blanc */
+    const dot = document.createElementNS(ns, 'circle');
+    dot.setAttribute('cx', cp.x);
+    dot.setAttribute('cy', cp.y);
+    dot.setAttribute('r', '4');
+    dot.setAttribute('fill', '#ffffff');
+    dot.setAttribute('stroke', 'rgba(255,255,255,0.3)');
+    dot.setAttribute('stroke-width', '1.5');
+    const dotAnim = document.createElementNS(ns, 'animate');
+    dotAnim.setAttribute('attributeName', 'r');
+    dotAnim.setAttribute('values', '3.5;4.5;3.5');
+    dotAnim.setAttribute('dur', '2.4s');
+    dotAnim.setAttribute('repeatCount', 'indefinite');
+    dot.appendChild(dotAnim);
+    svgEl.appendChild(dot);
+  }
+
+  /* ── Demi-cercle de fond droit (axe) ── */
+  // Petite ligne décorative basse
+  const line = document.createElementNS(ns, 'line');
+  line.setAttribute('x1', CX - R - 12);
+  line.setAttribute('y1', CY);
+  line.setAttribute('x2', CX + R + 12);
+  line.setAttribute('y2', CY);
+  line.setAttribute('stroke', 'rgba(255,255,255,0.06)');
+  line.setAttribute('stroke-width', '1');
+  svgEl.insertBefore(line, svgEl.firstChild);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GÉNÉRATION DU TEXTE DE STATUT
+   ══════════════════════════════════════════════════════════ */
+function renderStatus(el, nowMin) {
+  const state = getState(nowMin);
+  el.innerHTML = '';
+
+  if (state.type === 'fin') {
+    el.innerHTML = `<span class="muted">Journée terminée</span>`;
+    return;
+  }
+
+  if (state.type === 'avant') {
+    const dans = toMin(state.next.debut) - nowMin;
+    el.innerHTML = `
+      <span class="class-name" style="color:${state.next.couleur}">${state.next.classe}</span>
+      <span class="muted"> · ${state.next.label} · dans ${dans} min</span>`;
+    return;
+  }
+
+  if (state.type === 'encours') {
+    const c = state.cours;
+    el.innerHTML = `
+      <span class="class-name" style="color:${c.couleur}">${c.classe}</span>
+      <span class="muted"> · ${c.label} · ${state.restant} min</span>`;
+    return;
+  }
+
+  if (state.type === 'pause') {
+    const next = state.next;
+    el.innerHTML = `
+      <span class="muted">Pause · </span>
+      <span class="class-name" style="color:${next.couleur}">${next.classe}</span>
+      <span class="muted"> dans ${state.dans} min</span>`;
+    return;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INITIALISATION
+   ══════════════════════════════════════════════════════════ */
+function init() {
+  /* Header principal : 13h09 */
+  const T_PAUSE = toMin('13:09');
+  renderArc(document.getElementById('main-arc'), T_PAUSE);
+  renderStatus(document.getElementById('main-status'), T_PAUSE);
+
+  /* Démo — En cours : 10h30 */
+  const T_ENCOURS = toMin('10:30');
+  renderArc(document.getElementById('arc-encours'), T_ENCOURS);
+  renderStatus(document.getElementById('status-encours'), T_ENCOURS);
+
+  /* Démo — Pause : 13h09 */
+  renderArc(document.getElementById('arc-pause'), T_PAUSE);
+  renderStatus(document.getElementById('status-pause'), T_PAUSE);
+
+  /* Démo — Fin de journée : 17h00 */
+  const T_FIN = toMin('17:00');
+  renderArc(document.getElementById('arc-fin'), T_FIN);
+  renderStatus(document.getElementById('status-fin'), T_FIN);
+
+  /* Horloge simulée (démarre à 13:09:00) */
+  let simSec = 13 * 3600 + 9 * 60;
+  function tickClock() {
+    const h = Math.floor(simSec / 3600);
+    const m = Math.floor((simSec % 3600) / 60);
+    const s = simSec % 60;
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('clock-time').textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+    simSec = (simSec + 1) % 86400;
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emploi du temps — Proto Mix</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      color: #f1f5f9;
+    }
+
+    /* ────────────────────────────────────────────
+       CARTE PRINCIPALE
+    ──────────────────────────────────────────── */
+    .card {
+      width: 380px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 28px;
+      padding: 28px 24px 24px;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 32px 64px rgba(0,0,0,0.6),
+        0 4px 16px rgba(0,0,0,0.4);
+      position: relative;
+      overflow: visible;
+    }
+
+    /* Halo ambiant coloré derrière la carte */
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: -40px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at 50% 30%, var(--glow-color, rgba(59,130,246,0.18)) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: -1;
+      transition: background 0.8s ease;
+    }
+
+    /* ────────────────────────────────────────────
+       SECTION ARC SVG
+    ──────────────────────────────────────────── */
+    .arc-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .arc-svg-container {
+      position: relative;
+      width: 280px;
+      height: 158px;
+      overflow: visible;
+    }
+
+    .arc-svg-container svg {
+      overflow: visible;
+    }
+
+    /* Heure affichée au centre sous l'arc */
+    .arc-time-label {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    /* Étiquettes horaires flanquant le bas de l'arc */
+    .arc-hour-start,
+    .arc-hour-end {
+      position: absolute;
+      bottom: -2px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      font-variant-numeric: tabular-nums;
+    }
+    .arc-hour-start { left: 4px; }
+    .arc-hour-end   { right: 4px; }
+
+    /* ────────────────────────────────────────────
+       DIVIDER
+    ──────────────────────────────────────────── */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent);
+      margin: 22px 0 20px;
+    }
+
+    /* ────────────────────────────────────────────
+       NOW PLAYING
+    ──────────────────────────────────────────── */
+    .now-playing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      text-align: center;
+    }
+
+    /* Badge "EN COURS" */
+    .now-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 11px;
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.55);
+    }
+    .now-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent, #3b82f6);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    /* Icône classe */
+    .class-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      background: var(--accent-bg, rgba(59,130,246,0.15));
+      border: 1.5px solid var(--accent-border, rgba(59,130,246,0.3));
+      box-shadow: 0 0 24px var(--accent-glow, rgba(59,130,246,0.25));
+      transition: all 0.5s ease;
+      position: relative;
+    }
+    .class-icon::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 22px;
+      background: transparent;
+      border: 1px solid var(--accent-border, rgba(59,130,246,0.15));
+      opacity: 0.5;
+    }
+
+    /* Nom de la classe */
+    .class-name {
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #f8fafc;
+      line-height: 1;
+    }
+
+    /* Créneau */
+    .class-slot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      color: rgba(255,255,255,0.45);
+      font-weight: 500;
+    }
+    .class-slot .slot-code {
+      color: var(--accent, #3b82f6);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .class-slot .sep {
+      color: rgba(255,255,255,0.18);
+    }
+
+    /* ────────────────────────────────────────────
+       BARRE DE PROGRESSION
+    ──────────────────────────────────────────── */
+    .progress-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(to right, var(--accent-dim, rgba(59,130,246,0.7)), var(--accent, #3b82f6));
+      transition: width 1s linear;
+      position: relative;
+    }
+    /* Reflet brillant sur la barre */
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 40px;
+      height: 100%;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.5));
+      border-radius: 4px;
+    }
+
+    /* Curseur sur la barre */
+    .progress-thumb {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.15), 0 0 12px var(--accent-glow, rgba(59,130,246,0.4));
+      transition: left 1s linear;
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.35);
+      font-variant-numeric: tabular-nums;
+    }
+    .progress-labels .elapsed { color: var(--accent, #3b82f6); font-weight: 600; }
+
+    /* ────────────────────────────────────────────
+       À SUIVRE
+    ──────────────────────────────────────────── */
+    .next-section {
+      margin-top: 20px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .next-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+      white-space: nowrap;
+    }
+
+    .next-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      background: rgba(139,92,246,0.12);
+      border: 1px solid rgba(139,92,246,0.22);
+      flex-shrink: 0;
+    }
+
+    .next-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .next-class {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .next-time {
+      font-size: 12px;
+      color: rgba(255,255,255,0.33);
+      margin-top: 1px;
+    }
+
+    .next-countdown {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.3);
+      white-space: nowrap;
+    }
+
+    /* ────────────────────────────────────────────
+       TOOLTIPS sur l'arc
+    ──────────────────────────────────────────── */
+    .arc-tooltip {
+      position: absolute;
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      color: #f1f5f9;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.2s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    /* ────────────────────────────────────────────
+       ANIMATION DU CURSEUR SUR L'ARC
+    ──────────────────────────────────────────── */
+    @keyframes cursor-pulse {
+      0%, 100% {
+        r: 5;
+        opacity: 1;
+      }
+      50% {
+        r: 7;
+        opacity: 0.8;
+      }
+    }
+    @keyframes ring-pulse {
+      0% { r: 5; opacity: 0.6; }
+      100% { r: 14; opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card" id="mainCard">
+  <!-- Section arc SVG -->
+  <div class="arc-wrapper">
+    <div class="arc-svg-container" id="arcContainer">
+      <svg id="arcSvg" width="280" height="158" viewBox="0 0 280 158" overflow="visible">
+        <defs>
+          <!-- Filtre glow pour le segment actif -->
+          <filter id="glow-blue" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="glow-green" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="glow-purple" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <!-- Filtre curseur -->
+          <filter id="glow-cursor" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="4" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <!-- Clip pour ne pas dépasser -->
+          <clipPath id="arcClip">
+            <rect x="-20" y="-20" width="320" height="200"/>
+          </clipPath>
+        </defs>
+
+        <!-- Arc de fond (piste grise) -->
+        <path id="trackPath" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10" stroke-linecap="round"/>
+
+        <!-- Segments de cours (rendus via JS) -->
+        <g id="segmentsGroup"></g>
+
+        <!-- Curseur temps réel -->
+        <g id="cursorGroup" style="display:none;">
+          <!-- Anneau pulsant -->
+          <circle id="cursorRing" r="5" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5">
+            <animate attributeName="r" values="6;16;6" dur="2.5s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.6;0;0.6" dur="2.5s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Point central -->
+          <circle id="cursorDot" r="5" fill="white" filter="url(#glow-cursor)">
+            <animate attributeName="r" values="4.5;5.5;4.5" dur="2s" repeatCount="indefinite"/>
+          </circle>
+        </g>
+
+        <!-- Étiquettes des heures clés sur l'arc (rendues via JS) -->
+        <g id="labelsGroup"></g>
+      </svg>
+      <span class="arc-hour-start" id="hourStart">8h10</span>
+      <span class="arc-hour-end" id="hourEnd">16h45</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Section Now Playing -->
+  <div class="now-playing" id="nowPlaying">
+    <div class="now-badge">
+      <span class="dot"></span>
+      En cours
+    </div>
+
+    <div class="class-icon" id="classIcon">📚</div>
+    <div class="class-name" id="className">—</div>
+    <div class="class-slot">
+      <span class="slot-code" id="slotCode">—</span>
+      <span class="sep">·</span>
+      <span id="slotTime">—</span>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width: 0%">
+          <div class="progress-thumb" id="progressThumb" style="left: 0%"></div>
+        </div>
+      </div>
+      <div class="progress-labels">
+        <span class="elapsed" id="elapsed">— min écoulées</span>
+        <span id="remaining">— min restantes</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- À suivre -->
+  <div class="next-section" id="nextSection" style="display:none;">
+    <span class="next-label">À suivre</span>
+    <div class="next-icon" id="nextIcon">📚</div>
+    <div class="next-info">
+      <div class="next-class" id="nextClass">—</div>
+      <div class="next-time" id="nextTime">—</div>
+    </div>
+    <div class="next-countdown" id="nextCountdown">—</div>
+  </div>
+</div>
+
+<!-- Tooltip arc -->
+<div class="arc-tooltip" id="arcTooltip"></div>
+
+<script>
+  // ─────────────────────────────────────────────────────
+  //  DONNÉES : emploi du temps du lundi
+  // ─────────────────────────────────────────────────────
+
+  const COURS = [
+    { code: 'M1', debut: '8:10',  fin: '9:05',  classe: '6e C',    couleur: '#3b82f6', emoji: '🔵' },
+    { code: 'M2', debut: '9:10',  fin: '10:05', classe: '5e BD3',   couleur: '#10b981', emoji: '🟢' },
+    { code: 'M3', debut: '10:20', fin: '11:15', classe: '6e A',    couleur: '#3b82f6', emoji: '🔵' },
+    { code: 'M4', debut: '11:20', fin: '12:15', classe: '4e D',    couleur: '#8b5cf6', emoji: '🟣' },
+    { code: 'S1', debut: '13:50', fin: '14:45', classe: '5e BD3',   couleur: '#10b981', emoji: '🟢' },
+    { code: 'S2', debut: '14:50', fin: '15:45', classe: '5e A',    couleur: '#10b981', emoji: '🟢' },
+    { code: 'S3', debut: '15:50', fin: '16:45', classe: '6e C',    couleur: '#3b82f6', emoji: '🔵' },
+  ];
+
+  // Icônes par niveau
+  const ICONS = {
+    '6e': '📖',
+    '5e': '📐',
+    '4e': '📏',
+  };
+
+  function getIcon(classe) {
+    const lvl = classe.substring(0, 2);
+    return ICONS[lvl] || '📚';
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  SIMULATION : 10h30
+  // ─────────────────────────────────────────────────────
+
+  function getSimulatedDate() {
+    const now = new Date();
+    // Forcer lundi 10h30 pour la simulation
+    const sim = new Date(now);
+    sim.setHours(10, 30, 0, 0);
+    // Forcer un lundi (jour 1)
+    const day = sim.getDay();
+    const diff = (1 - day + 7) % 7;
+    sim.setDate(sim.getDate() + diff);
+    return sim;
+  }
+
+  // Convertit "HH:MM" en minutes depuis minuit
+  function toMin(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  function formatMin(min) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return `${h}h${m.toString().padStart(2, '0')}`;
+  }
+
+  // Résout le cours actuel et le suivant
+  function resoudreEtat(maintenant) {
+    const nowMin = maintenant.getHours() * 60 + maintenant.getMinutes();
+
+    let coursActuel = null;
+    let coursSuivant = null;
+
+    for (let i = 0; i < COURS.length; i++) {
+      const c = COURS[i];
+      const debut = toMin(c.debut);
+      const fin   = toMin(c.fin);
+
+      if (nowMin >= debut && nowMin < fin) {
+        coursActuel = { ...c, debutMin: debut, finMin: fin };
+        if (i + 1 < COURS.length) {
+          const s = COURS[i + 1];
+          coursSuivant = { ...s, debutMin: toMin(s.debut), finMin: toMin(s.fin) };
+        }
+        break;
+      }
+      // Pas encore commencé → c'est le suivant
+      if (nowMin < debut && !coursSuivant) {
+        coursSuivant = { ...c, debutMin: debut, finMin: fin };
+      }
+    }
+
+    return { coursActuel, coursSuivant, nowMin };
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  ARC SVG
+  // ─────────────────────────────────────────────────────
+
+  const CX = 140, CY = 158, R = 128;
+  // L'arc va de 210° à 330° (demi-cercle vers le haut + un peu plus)
+  // On utilise 195° → 345° = arc de 150° environ, ouvert en bas
+  const ARC_START_DEG = 198;
+  const ARC_END_DEG   = 342;
+  const ARC_SPAN      = ARC_END_DEG - ARC_START_DEG; // 144 degrés
+
+  // Minutes couvertes par l'arc
+  const JOUR_DEBUT = toMin('8:10');
+  const JOUR_FIN   = toMin('16:45');
+  const JOUR_SPAN  = JOUR_FIN - JOUR_DEBUT;
+
+  function degToRad(deg) { return (deg * Math.PI) / 180; }
+
+  function minToDeg(min) {
+    const t = (min - JOUR_DEBUT) / JOUR_SPAN; // 0..1
+    return ARC_START_DEG + t * ARC_SPAN;
+  }
+
+  function degToPoint(deg) {
+    const rad = degToRad(deg);
+    return {
+      x: CX + R * Math.cos(rad),
+      y: CY + R * Math.sin(rad),
+    };
+  }
+
+  function arcPath(startDeg, endDeg, r) {
+    const s = degToPoint(startDeg);
+    const e = degToPoint(endDeg);
+    const large = (endDeg - startDeg) > 180 ? 1 : 0;
+    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
+  }
+
+  function buildArc(nowMin) {
+    const svg       = document.getElementById('arcSvg');
+    const track     = document.getElementById('trackPath');
+    const segments  = document.getElementById('segmentsGroup');
+    const cursor    = document.getElementById('cursorGroup');
+    const cursorDot = document.getElementById('cursorDot');
+    const cursorRing= document.getElementById('cursorRing');
+    const labels    = document.getElementById('labelsGroup');
+
+    // Piste de fond
+    track.setAttribute('d', arcPath(ARC_START_DEG, ARC_END_DEG, R));
+    track.setAttribute('stroke-width', '8');
+
+    // Vider
+    segments.innerHTML = '';
+    labels.innerHTML   = '';
+
+    COURS.forEach((c) => {
+      const debutMin = toMin(c.debut);
+      const finMin   = toMin(c.fin);
+      const startDeg = minToDeg(debutMin);
+      const endDeg   = minToDeg(finMin);
+
+      const enCours = nowMin >= debutMin && nowMin < finMin;
+      const passe   = nowMin >= finMin;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', arcPath(startDeg, endDeg, R));
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+
+      if (enCours) {
+        path.setAttribute('stroke', c.couleur);
+        path.setAttribute('stroke-width', '10');
+        path.setAttribute('opacity', '1');
+        path.style.filter = `drop-shadow(0 0 8px ${c.couleur}cc)`;
+      } else if (passe) {
+        path.setAttribute('stroke', c.couleur);
+        path.setAttribute('stroke-width', '7');
+        path.setAttribute('opacity', '0.35');
+      } else {
+        path.setAttribute('stroke', c.couleur);
+        path.setAttribute('stroke-width', '7');
+        path.setAttribute('opacity', '0.55');
+      }
+
+      // Tooltip interactivité
+      path.style.cursor = 'pointer';
+      path.addEventListener('mouseenter', (e) => showTooltip(e, c));
+      path.addEventListener('mouseleave', hideTooltip);
+
+      segments.appendChild(path);
+
+      // Petit point de début de cours
+      const startPt = degToPoint(startDeg);
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('cx', startPt.x);
+      dot.setAttribute('cy', startPt.y);
+      dot.setAttribute('r', '3');
+      dot.setAttribute('fill', enCours ? c.couleur : 'rgba(255,255,255,0.15)');
+      dot.setAttribute('opacity', enCours ? '1' : '0.5');
+      segments.appendChild(dot);
+
+      // Étiquette code du cours au milieu du segment
+      const midDeg = (startDeg + endDeg) / 2;
+      const midPt  = degToPoint(midDeg);
+      // Décaler légèrement vers l'extérieur
+      const outR   = R + 18;
+      const outPt  = { x: CX + outR * Math.cos(degToRad(midDeg)), y: CY + outR * Math.sin(degToRad(midDeg)) };
+
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', outPt.x);
+      txt.setAttribute('y', outPt.y + 4);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('font-size', '9');
+      txt.setAttribute('font-weight', '600');
+      txt.setAttribute('font-family', 'system-ui, sans-serif');
+      txt.setAttribute('fill', enCours ? c.couleur : 'rgba(255,255,255,0.25)');
+      txt.setAttribute('letter-spacing', '0');
+      txt.textContent = c.code;
+      labels.appendChild(txt);
+    });
+
+    // Curseur temps réel
+    if (nowMin >= JOUR_DEBUT && nowMin <= JOUR_FIN) {
+      cursor.style.display = 'block';
+      const curDeg = minToDeg(nowMin);
+      const curPt  = degToPoint(curDeg);
+      [cursorDot, cursorRing].forEach(el => {
+        el.setAttribute('cx', curPt.x);
+        el.setAttribute('cy', curPt.y);
+      });
+
+      // Couleur du curseur = couleur du cours actuel
+      const { coursActuel } = resoudreEtat({ getHours: () => Math.floor(nowMin/60), getMinutes: () => nowMin%60 });
+      if (coursActuel) {
+        cursorDot.setAttribute('fill', 'white');
+        cursorDot.style.filter = `drop-shadow(0 0 8px ${coursActuel.couleur})`;
+      }
+    } else {
+      cursor.style.display = 'none';
+    }
+  }
+
+  // Tooltip
+  function showTooltip(event, cours) {
+    const tooltip = document.getElementById('arcTooltip');
+    const card    = document.getElementById('mainCard').getBoundingClientRect();
+    const svgContainer = document.getElementById('arcContainer');
+    const rect = svgContainer.getBoundingClientRect();
+
+    tooltip.innerHTML = `<strong style="color:${cours.couleur}">${cours.code}</strong> · ${cours.classe}<br><span style="color:rgba(255,255,255,0.4);font-size:10.5px">${cours.debut.replace(':', 'h')} – ${cours.fin.replace(':', 'h')}</span>`;
+    tooltip.style.left = (event.clientX - card.left + 12) + 'px';
+    tooltip.style.top  = (event.clientY - card.top  - 10) + 'px';
+    tooltip.style.opacity = '1';
+    document.getElementById('mainCard').appendChild(tooltip);
+  }
+
+  function hideTooltip() {
+    document.getElementById('arcTooltip').style.opacity = '0';
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  MISE À JOUR DE L'UI "NOW PLAYING"
+  // ─────────────────────────────────────────────────────
+
+  const COLORS = {
+    '#3b82f6': {
+      bg:     'rgba(59,130,246,0.12)',
+      border: 'rgba(59,130,246,0.28)',
+      glow:   'rgba(59,130,246,0.35)',
+      dim:    'rgba(59,130,246,0.6)',
+      aura:   'rgba(59,130,246,0.14)',
+    },
+    '#10b981': {
+      bg:     'rgba(16,185,129,0.12)',
+      border: 'rgba(16,185,129,0.28)',
+      glow:   'rgba(16,185,129,0.35)',
+      dim:    'rgba(16,185,129,0.6)',
+      aura:   'rgba(16,185,129,0.14)',
+    },
+    '#8b5cf6': {
+      bg:     'rgba(139,92,246,0.12)',
+      border: 'rgba(139,92,246,0.28)',
+      glow:   'rgba(139,92,246,0.35)',
+      dim:    'rgba(139,92,246,0.6)',
+      aura:   'rgba(139,92,246,0.14)',
+    },
+  };
+
+  function appliquerCouleur(couleur) {
+    const c   = COLORS[couleur] || COLORS['#3b82f6'];
+    const root = document.getElementById('mainCard');
+
+    root.style.setProperty('--accent',       couleur);
+    root.style.setProperty('--accent-bg',    c.bg);
+    root.style.setProperty('--accent-border',c.border);
+    root.style.setProperty('--accent-glow',  c.glow);
+    root.style.setProperty('--accent-dim',   c.dim);
+    root.style.setProperty('--glow-color',   c.aura);
+  }
+
+  function mettreAJourUI(nowSim) {
+    const nowMin = nowSim.getHours() * 60 + nowSim.getMinutes();
+    const { coursActuel, coursSuivant } = resoudreEtat(nowSim);
+
+    // Mettre à jour l'arc
+    buildArc(nowMin);
+
+    if (coursActuel) {
+      appliquerCouleur(coursActuel.couleur);
+
+      // Icône
+      const icon = getIcon(coursActuel.classe);
+      document.getElementById('classIcon').textContent = icon;
+
+      // Nom
+      document.getElementById('className').textContent = coursActuel.classe;
+
+      // Créneau
+      document.getElementById('slotCode').textContent = coursActuel.code;
+      document.getElementById('slotTime').textContent =
+        `${coursActuel.debut.replace(':', 'h')} – ${coursActuel.fin.replace(':', 'h')}`;
+
+      // Progression
+      const dureeTotal = coursActuel.finMin - coursActuel.debutMin;
+      const ecoule    = nowMin - coursActuel.debutMin;
+      const pct       = Math.max(0, Math.min(100, (ecoule / dureeTotal) * 100));
+
+      document.getElementById('progressFill').style.width    = pct + '%';
+      document.getElementById('progressThumb').style.left   = pct + '%';
+      document.getElementById('elapsed').textContent         = `${ecoule} min écoulées`;
+      document.getElementById('remaining').textContent       = `${dureeTotal - ecoule} min restantes`;
+    } else {
+      document.getElementById('className').textContent  = 'Pause';
+      document.getElementById('slotCode').textContent   = '—';
+      document.getElementById('slotTime').textContent   = '';
+      document.getElementById('elapsed').textContent    = '';
+      document.getElementById('remaining').textContent  = '';
+      document.getElementById('progressFill').style.width = '0%';
+    }
+
+    // À suivre
+    const nextSection = document.getElementById('nextSection');
+    if (coursSuivant) {
+      nextSection.style.display = 'flex';
+
+      document.getElementById('nextIcon').textContent        = getIcon(coursSuivant.classe);
+      document.getElementById('nextIcon').style.background  = COLORS[coursSuivant.couleur]?.bg || '';
+      document.getElementById('nextIcon').style.borderColor = COLORS[coursSuivant.couleur]?.border || '';
+
+      document.getElementById('nextClass').textContent = coursSuivant.classe;
+      document.getElementById('nextTime').textContent  =
+        `${coursSuivant.code} · ${coursSuivant.debut.replace(':', 'h')} – ${coursSuivant.fin.replace(':', 'h')}`;
+
+      // Compte à rebours jusqu'au prochain cours
+      if (!coursActuel) {
+        const attente = coursSuivant.debutMin - nowMin;
+        document.getElementById('nextCountdown').textContent = `dans ${attente} min`;
+      } else {
+        const resteCours  = coursActuel.finMin - nowMin;
+        const pause       = coursSuivant.debutMin - coursActuel.finMin;
+        document.getElementById('nextCountdown').textContent = `+${resteCours + pause} min`;
+      }
+    } else {
+      nextSection.style.display = 'none';
+    }
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  BOUCLE PRINCIPALE (simulation figée à 10h30)
+  // ─────────────────────────────────────────────────────
+
+  function tick() {
+    const sim = getSimulatedDate();
+    mettreAJourUI(sim);
+  }
+
+  tick();
+  setInterval(tick, 10000); // rafraîchissement toutes les 10 s
+</script>
+</body>
+</html>
