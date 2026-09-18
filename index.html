@@ -2037,7 +2037,9 @@ function rappelItemHtml(r) {
 }
 
 async function loadRappels(className) {
-  const res = await fetch(`${CLASSBOARD_URL}/api/dashboard/reminders?className=${className}`);
+  // credentials: le cookie de session ClassBoard (Domain=.beltools.fr) permet à l'enseignant connecté
+  // de voir SES rappels ; sans cookie, ClassBoard renvoie ceux de l'admin (comportement historique).
+  const res = await fetch(`${CLASSBOARD_URL}/api/dashboard/reminders?className=${className}`, { credentials: "include" });
   if (!res.ok) return null;
   const data = await res.json();
   return data.reminders || [];
