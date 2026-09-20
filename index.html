@@ -1395,30 +1395,29 @@ const CRENEAUX = {
 // EDT 2026-2027 — SA (semaine A) = SP (semaine ISO paire), SB = SI (impaire)
 const EDT = {
   1: { // lundi
-    M1: [{ classe: '4B', parity: 'SP' }, { classe: '5A', parity: 'SI' }],
+    M1: [{ classe: '6D', type: 'vie-de-classe', parity: 'SP' }, { classe: '5A', parity: 'SI' }],
     M2: { classe: '6D' },
     M3: { classe: '6A' },
-    M4: [{ classe: '4B', parity: 'SI' }],
-    S1: { classe: '4B' },
-    S2: { classe: '5A' },
+    M4: { classe: '4B' },
     S3: { classe: '4A' },
   },
   2: { // mardi
+    M1: { classe: '6D' },
     M2: { classe: '6A' },
-    M4: { classe: '6D' },
   },
   3: { // mercredi
     M1: [{ classe: '4B', parity: 'SP' }, { classe: '4A', parity: 'SI' }],
     M2: { classe: '4A' },
     M3: { classe: '4B' },
+    M4: { classe: '5A' },
   },
   4: { // jeudi
     M1: [{ classe: '6A', groupe: 'P2', parity: 'SP' }, { classe: '6D', groupe: 'P2', parity: 'SI' }],
     M2: [{ classe: '6A', groupe: 'Grp1', parity: 'SP' }, { classe: '6D', groupe: 'P1', parity: 'SI' }],
     M3: { classe: '4A' },
-    M4: { classe: '6D' },
+    M4: { classe: '4B' },
     S1: { classe: '5A' },
-    S2: [{ classe: '6D', type: 'vie-de-classe', parity: 'SP' }],
+    S2: { classe: '6D' },
     S3: { classe: '5A' },
   },
   5: { // vendredi
