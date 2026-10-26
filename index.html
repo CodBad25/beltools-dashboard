@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -306,13 +305,75 @@
       transform: rotate(90deg);
     }
 
+    /* Navigation entre créneaux (flèches dans l'en-tête) */
+    .rappels-nav, .rappels-now {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+      font-size: 0.7rem;
+      font-family: inherit;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .rappels-nav:hover:not(:disabled), .rappels-now:hover { background: rgba(255,255,255,0.22); }
+    .rappels-nav:disabled { opacity: 0.25; cursor: default; }
+    .rappels-now { display: none; }
+
+    /* Un bloc par créneau : le cours en cours en tête, les suivants en dessous */
+    .rappels-slot {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      opacity: 0.55;
+      transition: opacity 0.2s;
+    }
+
+    .rappels-slot.is-now, .rappels-slot.is-focus { opacity: 1; }
+
+    .rappels-slot + .rappels-slot {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
     /* Séparateur de classe, quand les rappels de plusieurs classes sont cumulés */
     .rappels-group {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
       font-size: 0.6rem;
       font-weight: 800;
       letter-spacing: 0.04em;
       color: rgba(255,255,255,0.45);
       padding: 3px 0 1px;
+      cursor: pointer;
+    }
+
+    .rappels-slot.is-focus .rappels-group { color: rgba(255,255,255,0.8); }
+
+    .rappels-badge-now {
+      font-size: 0.52rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .rappels-group-count {
+      margin-left: auto;
+      font-weight: 700;
+      color: rgba(255,255,255,0.35);
     }
 
     .rappels-body {
@@ -331,6 +392,7 @@
     }
 
     .rappels-list {
+      position: relative;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -557,6 +619,17 @@
     .sync-error { background: #f87171; opacity: 1; }
     @keyframes syncPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
     @keyframes syncFade { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+
+    .sync-banner {
+      margin: 12px auto 0; max-width: 1100px; padding: 10px 16px;
+      border-radius: 10px; background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.5);
+      color: #fecaca; font-size: 0.9rem; display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    }
+    .sync-banner[hidden] { display: none; }
+    .sync-banner button {
+      flex-shrink: 0; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(248,113,113,0.6);
+      background: rgba(248,113,113,0.25); color: #fff; cursor: pointer; font: inherit;
+    }
 
     /* ── MAIN ── */
     .main {
@@ -1111,8 +1184,11 @@
       <div class="rappels-widget collapsed" id="rappels-widget">
         <div class="rappels-header" id="rappels-header" title="Afficher ou masquer les rappels">
           <span class="rappels-icon">📋</span>
+          <button class="rappels-nav" id="rappels-prev" type="button" title="Créneau précédent">‹</button>
           <span class="rappels-title" id="rappels-title">Rappels</span>
+          <button class="rappels-nav" id="rappels-next" type="button" title="Créneau suivant">›</button>
           <span class="rappels-count" id="rappels-count" data-count="0">0</span>
+          <button class="rappels-now" id="rappels-now" type="button" title="Revenir au cours en cours">⟲</button>
           <span class="rappels-chevron">▸</span>
         </div>
         <div class="rappels-body">
@@ -1137,6 +1213,11 @@
         <div id="sync-indicator" class="sync-indicator" title=""></div>
       </div>
     </div>
+  </div>
+
+  <div class="sync-banner" id="sync-banner" role="alert" hidden>
+    ⚠️ Synchronisation impossible : ce tableau affiche la liste enregistrée sur cet appareil, qui peut différer de celle des autres.
+    <button type="button" onclick="refreshFromCloud()">Réessayer</button>
   </div>
 
   <div class="main" id="app"></div>
@@ -1276,67 +1357,92 @@ function getState() {
 
 let state = getState();
 
-// ── Supabase sync ──
-const SUPABASE_URL = 'https://ewyelltfbkfrocygnydd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3eWVsbHRmYmtmcm9jeWdueWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNzI3MTgsImV4cCI6MjA4MTc0ODcxOH0.5uhmRtBXQ72ME1BWokV-LyzGr_oRmNp5j2WjeYX0QMg';
-let sb = null;
-try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) { console.warn('Supabase non disponible:', e); }
+// ── Synchro de la liste des outils (serveur beltools.fr) ──
+// La référence est le serveur (/api/config, derrière le mot de passe du site) ; le
+// localStorage n'est qu'une copie rapide. On relit le serveur à l'ouverture, au retour
+// sur l'onglet et toutes les 10 min, pour qu'un onglet resté ouvert au collège suive.
+// En local : ?api=http://localhost:8787 (node server/config-server.mjs).
+const CONFIG_API = location.hostname.match(/^(localhost|127\.)/)
+  ? (new URLSearchParams(location.search).get('api') || 'http://localhost:8787') + '/api/config'
+  : '/api/config';
+const CONFIG_REFRESH_MS = 10 * 60 * 1000;
+const SERVER_SYNCED_KEY = 'beltools_server_synced'; // cet appareil a déjà fusionné sa liste avec le serveur
+
+function cloudPayload() {
+  return {
+    custom_tools: state.tools.filter(t => t.id.startsWith('custom_')),
+    builtin_state: state.tools.filter(t => !t.id.startsWith('custom_')).map(t => ({ id: t.id, fav: t.fav, order: t.order, archived: !!t.archived })),
+    collapsed: state.collapsed,
+  };
+}
+
+async function pushToCloud() {
+  const res = await fetch(CONFIG_API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cloudPayload()) });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+}
 
 let syncTimer = null;
 function syncToCloud() {
-  if (!sb) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {
-    try {
-      const customTools = state.tools.filter(t => t.id.startsWith('custom_'));
-      const builtinState = state.tools.filter(t => !t.id.startsWith('custom_')).map(t => ({ id: t.id, fav: t.fav, order: t.order, archived: !!t.archived }));
-      await sb.from('beltools_config').upsert({
-        id: 'default',
-        custom_tools: customTools,
-        builtin_state: builtinState,
-        collapsed: state.collapsed,
-        updated_at: new Date().toISOString()
-      });
-      setSyncStatus('ok');
-    } catch(e) { console.warn('Sync cloud erreur:', e); setSyncStatus('error'); }
+    syncTimer = null;
+    try { await pushToCloud(); setSyncStatus('ok'); }
+    catch (e) { console.warn('Sync serveur erreur:', e); setSyncStatus('error'); }
   }, 1000);
 }
 
 async function syncFromCloud() {
-  if (!sb) return;
   try {
     setSyncStatus('loading');
-    const { data, error } = await sb.from('beltools_config').select('*').eq('id', 'default').single();
-    if (error || !data) { setSyncStatus('error'); return; }
-    // Merge custom tools from cloud
+    const res = await fetch(CONFIG_API, { cache: 'no-store' });
+    // Serveur encore vide (premier lancement) : cet appareil l'initialise avec sa liste.
+    if (res.status === 404) { await pushToCloud(); localStorage.setItem(SERVER_SYNCED_KEY, '1'); setSyncStatus('ok'); return; }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
     const cloudCustom = data.custom_tools || [];
-    const localCustomIds = new Set(state.tools.filter(t => t.id.startsWith('custom_')).map(t => t.id));
     const cloudIds = new Set(cloudCustom.map(t => t.id));
-    // Remove local custom tools not in cloud (deleted elsewhere)
-    state.tools = state.tools.filter(t => !t.id.startsWith('custom_') || cloudIds.has(t.id));
-    // Add/update cloud custom tools
+    // Premier contact de cet appareil avec le serveur : on FUSIONNE (ses outils perso absents
+    // du serveur y sont ajoutés) au lieu de les effacer — chaque appareil apporte sa liste.
+    const firstContact = !localStorage.getItem(SERVER_SYNCED_KEY);
+    const localOnly = state.tools.filter(t => t.id.startsWith('custom_') && !cloudIds.has(t.id));
+    // Ensuite les outils perso du serveur font foi (ajoutés, modifiés ou supprimés ailleurs).
+    if (!firstContact) state.tools = state.tools.filter(t => !t.id.startsWith('custom_') || cloudIds.has(t.id));
     cloudCustom.forEach(ct => {
       const existing = state.tools.find(t => t.id === ct.id);
       if (existing) { Object.assign(existing, ct); }
       else { state.tools.push(ct); }
     });
-    // Restore builtin fav/order from cloud
-    const builtinState = data.builtin_state || [];
-    builtinState.forEach(bs => {
+    (data.builtin_state || []).forEach(bs => {
       const t = state.tools.find(x => x.id === bs.id);
       if (t) { t.fav = bs.fav; t.order = bs.order; if (bs.archived !== undefined) t.archived = bs.archived; }
     });
     if (data.collapsed !== undefined) state.collapsed = data.collapsed;
     saveConfig(state);
+    if (firstContact && localOnly.length) await pushToCloud();
+    localStorage.setItem(SERVER_SYNCED_KEY, '1');
     setSyncStatus('ok');
-  } catch(e) { console.warn('Sync from cloud erreur:', e); setSyncStatus('error'); }
+  } catch (e) { console.warn('Sync depuis le serveur erreur:', e); setSyncStatus('error'); }
 }
+
+// Relecture quand on revient sur l'onglet et à intervalle régulier — sauf pendant une
+// modification en cours (modale ouverte, envoi en attente) pour ne pas l'écraser.
+function refreshFromCloud() {
+  if (syncTimer || document.querySelector('.modal-overlay.visible')) return;
+  syncFromCloud().then(() => render());
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromCloud(); });
+setInterval(() => { if (document.visibilityState === 'visible') refreshFromCloud(); }, CONFIG_REFRESH_MS);
 
 function setSyncStatus(s) {
   const el = document.getElementById('sync-indicator');
-  if (!el) return;
-  el.className = 'sync-indicator sync-' + s;
-  el.title = s === 'ok' ? 'Synchronisé' : s === 'loading' ? 'Synchronisation...' : s === 'error' ? 'Erreur de synchro' : '';
+  if (el) {
+    el.className = 'sync-indicator sync-' + s;
+    el.title = s === 'ok' ? 'Synchronisé' : s === 'loading' ? 'Synchronisation...' : s === 'error' ? 'Erreur de synchro' : '';
+  }
+  // En cas d'échec, un bandeau bien visible : sinon chaque appareil vit sa vie sans qu'on le sache.
+  const banner = document.getElementById('sync-banner');
+  if (s === 'error') banner.hidden = false;
+  else if (s === 'ok') banner.hidden = true;
 }
 
 function persist() { saveConfig(state); syncToCloud(); }
@@ -2001,12 +2107,20 @@ updateCurrentClass();
 setInterval(updateCurrentClass, 30000);
 
 // ── WIDGET RAPPELS (ClassBoard) ──
+// En local, ClassBoard tourne sur :3000 par défaut ; ?cb=http://localhost:3001
+// permet de pointer un autre port quand 3000 est pris par un autre projet.
 const CLASSBOARD_URL = location.hostname.match(/^(localhost|127\.)/)
-  ? 'http://localhost:3000'
+  ? (new URLSearchParams(location.search).get('cb') || 'http://localhost:3000')
   : 'https://classboard.beltools.fr';
 
-// Clé de ce qui est actuellement chargé : nom de classe en cours, ou 'preview:<jour>:<classes>'
-let rappelsLastKey = null;
+// ── Fil des rappels ──
+// Le widget suit l'heure : en tête le cours en cours (ou le prochain du jour),
+// puis les créneaux suivants de la journée empilés en dessous — on scrolle pour
+// tout voir. Les flèches ‹ › déplacent le focus sans attendre l'heure ; il se
+// recale tout seul sur le cours réel au changement de créneau.
+const RAPPELS_TTL = 5 * 60 * 1000;
+const rappelsCache = new Map(); // classe -> { t, reminders } (reminders null = ClassBoard injoignable)
+let rappelsState = { key: null, day: null, cours: [], baseIdx: 0, focusIdx: 0, isToday: true, enCours: false, userNav: false };
 
 // Pliage du widget rappels — replié par défaut (le dashboard est souvent projeté).
 const RAPPELS_COLLAPSE_KEY = 'beltools_rappels_collapsed';
@@ -2038,147 +2152,151 @@ function rappelItemHtml(r) {
 async function loadRappels(className) {
   // credentials: le cookie de session ClassBoard (Domain=.beltools.fr) permet à l'enseignant connecté
   // de voir SES rappels ; sans cookie, ClassBoard renvoie ceux de l'admin (comportement historique).
-  const res = await fetch(`${CLASSBOARD_URL}/api/dashboard/reminders?className=${className}`, { credentials: "include" });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.reminders || [];
+  try {
+    const res = await fetch(`${CLASSBOARD_URL}/api/dashboard/reminders?className=${className}`, { credentials: "include" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.reminders || [];
+  } catch (e) {
+    return null;
+  }
 }
 
-// Hors cours : rappels cumulés de toutes les classes du prochain jour, groupés par classe.
-async function fetchRappelsJour(classNames, jourLabel) {
+// Un seul appel réseau par classe toutes les 5 min (les flèches ne refetchent rien).
+async function rappelsFetchClasse(className, force) {
+  const hit = rappelsCache.get(className);
+  if (!force && hit && Date.now() - hit.t < RAPPELS_TTL) return hit.reminders;
+  const reminders = await loadRappels(className);
+  rappelsCache.set(className, { t: Date.now(), reminders });
+  return reminders;
+}
+
+// Journée à afficher + index du créneau d'ancrage (cours en cours, sinon prochain du jour).
+function rappelsBuildTimeline(now) {
+  const dow = now.getDay();
+  if (dow >= 1 && dow <= 5 && !getVacanceForDate(now)) {
+    const cours = edtBuildCoursOfDay(now);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const idx = cours.findIndex(c => nowMin < edtToMin(c.fin));
+    if (idx !== -1) {
+      return { day: now, cours, baseIdx: idx, isToday: true, enCours: nowMin >= edtToMin(cours[idx].debut) };
+    }
+  }
+  // Journée finie, week-end ou vacances : aperçu du prochain jour de classe.
+  const day = edtNextSchoolDay(now);
+  if (!day) return null;
+  const cours = edtBuildCoursOfDay(day);
+  if (cours.length === 0) return null;
+  return { day, cours, baseIdx: 0, isToday: false, enCours: false };
+}
+
+function rappelsHide() {
+  document.getElementById('rappels-widget').style.display = 'none';
+}
+
+function rappelsScrollToFocus(smooth) {
+  const listEl = document.getElementById('rappels-list');
+  const el = listEl.querySelector(`.rappels-slot[data-idx="${rappelsState.focusIdx}"]`);
+  if (el) listEl.scrollTo({ top: el.offsetTop, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+function rappelsSetFocus(idx, userNav) {
+  const st = rappelsState;
+  const clamped = Math.max(st.baseIdx, Math.min(st.cours.length - 1, idx));
+  st.focusIdx = clamped;
+  st.userNav = !!userNav && clamped !== st.baseIdx;
+  rappelsRender();
+  rappelsScrollToFocus(true);
+}
+
+function rappelsRender() {
+  const st = rappelsState;
   const widget = document.getElementById('rappels-widget');
-  const countEl = document.getElementById('rappels-count');
   const listEl = document.getElementById('rappels-list');
   const titleEl = document.getElementById('rappels-title');
-
-  if (!classNames || classNames.length === 0) {
-    widget.style.display = 'none';
-    return;
-  }
-
-  try {
-    const reponses = await Promise.all(
-      classNames.map(async (cn) => ({ cn, reminders: await loadRappels(cn) }))
-    );
-
-    // Si aucune classe n'a répondu, ClassBoard est injoignable : ne rien afficher
-    // plutôt que d'annoncer à tort « aucun rappel ».
-    if (reponses.every((r) => r.reminders === null)) {
-      widget.style.display = 'none';
-      return;
-    }
-
-    const groupes = reponses.filter((g) => g.reminders && g.reminders.length > 0);
-    const total = groupes.reduce((s, g) => s + g.reminders.length, 0);
-    countEl.textContent = total;
-    countEl.dataset.count = total;
-    titleEl.textContent = `Rappels · ${jourLabel.toLowerCase()}`;
-
-    listEl.innerHTML = total === 0
-      ? '<div class="rappels-empty">Aucun rappel en attente</div>'
-      : groupes.map((g) => {
-          const info = CLASSES_INFO[g.cn] || { label: g.cn };
-          return `<div class="rappels-group">${info.label}</div>` + g.reminders.map(rappelItemHtml).join('');
-        }).join('');
-
-    widget.style.display = 'flex';
-  } catch (e) {
-    widget.style.display = 'none';
-  }
-}
-
-async function fetchRappels(className) {
-  const widget = document.getElementById('rappels-widget');
   const countEl = document.getElementById('rappels-count');
-  const listEl = document.getElementById('rappels-list');
-  document.getElementById('rappels-title').textContent = 'Rappels';
 
-  if (!className) {
-    widget.style.display = 'none';
-    return;
-  }
+  const visibles = st.cours.slice(st.baseIdx);
+  if (visibles.length === 0) return rappelsHide();
 
-  try {
-    const reminders = await loadRappels(className);
-    if (reminders === null) {
-      widget.style.display = 'none';
-      return;
-    }
-    const count = reminders.length;
+  const entries = visibles.map((c, i) => ({ c, idx: st.baseIdx + i, reminders: (rappelsCache.get(c.classe) || {}).reminders }));
+  // Aucune classe n'a répondu : ClassBoard est injoignable, on masque plutôt que
+  // d'annoncer à tort « aucun rappel ».
+  if (entries.every(e => e.reminders == null)) return rappelsHide();
 
-    countEl.textContent = count;
-    countEl.dataset.count = count;
+  const focus = st.cours[st.focusIdx] || visibles[0].c;
+  const focusReminders = (rappelsCache.get(focus.classe) || {}).reminders;
+  const prefixe = st.isToday ? '' : JOURS[st.day.getDay()].toLowerCase() + ' · ';
+  titleEl.textContent = `${prefixe}${focus.label} · ${edtFmtH(focus.debut)}`;
+  const n = focusReminders ? focusReminders.length : 0;
+  countEl.textContent = n;
+  countEl.dataset.count = n;
 
-    if (count === 0) {
-      listEl.innerHTML = '<div class="rappels-empty">Aucun rappel en attente</div>';
-    } else {
-      listEl.innerHTML = reminders.map(r => `
-        <div class="rappel-item">
-          <span class="rappel-student">${r.studentLastName}</span>
-          <span class="rappel-text">${r.text}</span>
-          ${r.categoryLabel ? `<span class="rappel-cat">${r.categoryIcon || ''} ${r.categoryLabel}</span>` : ''}
-        </div>
-      `).join('');
-    }
+  listEl.innerHTML = entries.map(e => {
+    const classes = ['rappels-slot'];
+    if (e.idx === st.baseIdx && st.isToday && st.enCours) classes.push('is-now');
+    if (e.idx === st.focusIdx) classes.push('is-focus');
+    const rs = e.reminders;
+    const corps = rs == null
+      ? '<div class="rappels-empty">Rappels indisponibles</div>'
+      : rs.length === 0
+        ? '<div class="rappels-empty">Aucun rappel en attente</div>'
+        : rs.map(rappelItemHtml).join('');
+    const badge = (e.idx === st.baseIdx && st.isToday && st.enCours) ? '<span class="rappels-badge-now">en cours</span>' : '';
+    return `<div class="${classes.join(' ')}" data-idx="${e.idx}">
+        <div class="rappels-group">${e.c.label} · ${edtFmtH(e.c.debut)}${badge}<span class="rappels-group-count">${rs == null ? '–' : rs.length}</span></div>
+        ${corps}
+      </div>`;
+  }).join('');
 
-    widget.style.display = 'flex';
-  } catch (e) {
-    // ClassBoard non accessible — masquer le widget silencieusement
-    widget.style.display = 'none';
-  }
+  // Clic sur un bloc : le mettre au focus (sans replier le widget).
+  listEl.querySelectorAll('.rappels-slot').forEach(el => {
+    el.addEventListener('click', () => rappelsSetFocus(Number(el.dataset.idx), true));
+  });
+
+  document.getElementById('rappels-now').style.display = st.userNav ? 'inline-flex' : 'none';
+  document.getElementById('rappels-prev').disabled = st.focusIdx <= st.baseIdx;
+  document.getElementById('rappels-next').disabled = st.focusIdx >= st.cours.length - 1;
+  widget.style.display = 'flex';
 }
 
-// Rafraîchir les rappels à chaque changement de cours
+(function initRappelsNav() {
+  const stop = (fn) => (ev) => { ev.stopPropagation(); fn(); };
+  document.getElementById('rappels-prev').addEventListener('click', stop(() => rappelsSetFocus(rappelsState.focusIdx - 1, true)));
+  document.getElementById('rappels-next').addEventListener('click', stop(() => rappelsSetFocus(rappelsState.focusIdx + 1, true)));
+  document.getElementById('rappels-now').addEventListener('click', stop(() => rappelsSetFocus(rappelsState.baseIdx, false)));
+})();
+
+async function rappelsRefresh() {
+  const now = (typeof edtGetNow === 'function') ? edtGetNow() : new Date();
+  const tl = rappelsBuildTimeline(now);
+  if (!tl) { rappelsHide(); rappelsState.key = null; return; }
+
+  const key = `${tl.day.toDateString()}#${tl.baseIdx}`;
+  const changed = key !== rappelsState.key;
+  Object.assign(rappelsState, tl, { key });
+  if (changed) {
+    // Nouveau créneau : on se recale sur le cours réel et on rafraîchit les données.
+    rappelsState.focusIdx = tl.baseIdx;
+    rappelsState.userNav = false;
+  } else if (rappelsState.focusIdx < tl.baseIdx || rappelsState.focusIdx > tl.cours.length - 1) {
+    rappelsState.focusIdx = tl.baseIdx;
+    rappelsState.userNav = false;
+  }
+
+  const classes = [...new Set(tl.cours.slice(tl.baseIdx).map(c => c.classe))];
+  await Promise.all(classes.map(cn => rappelsFetchClasse(cn, changed)));
+  rappelsRender();
+  if (changed) rappelsScrollToFocus(false);
+}
+
+// Rafraîchir les rappels à chaque changement de cours (et au fil de l'heure)
 const origUpdateCurrentClass = updateCurrentClass;
 updateCurrentClass = function() {
   origUpdateCurrentClass();
-  const now = (typeof edtGetNow === 'function') ? edtGetNow() : new Date();
-  const dow = now.getDay();
-
-  // Classe en cours (ou démarrant dans moins de 15 min), le jour même
-  let currentClassName = null;
-  const dayEdt = (dow >= 1 && dow <= 5 && !getVacanceForDate(now)) ? EDT[dow] : null;
-  if (dayEdt) {
-    const parity = getWeekParity(now);
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    for (const [creneau, times] of Object.entries(CRENEAUX)) {
-      const startMin = times.start[0] * 60 + times.start[1];
-      const endMin = times.end[0] * 60 + times.end[1];
-      if (nowMin >= startMin && nowMin < endMin) {
-        const slot = getSlotForWeek(dayEdt[creneau], parity);
-        if (slot) currentClassName = slot.classe;
-        break;
-      }
-      // Prochain cours (dans les 15 min)
-      if (nowMin >= startMin - 15 && nowMin < startMin) {
-        const slot = getSlotForWeek(dayEdt[creneau], parity);
-        if (slot) currentClassName = slot.classe;
-        break;
-      }
-    }
-  }
-
-  if (currentClassName) {
-    if (currentClassName !== rappelsLastKey) {
-      rappelsLastKey = currentClassName;
-      fetchRappels(currentClassName);
-    }
-    return;
-  }
-
-  // Hors cours : rappels cumulés du jour affiché en aperçu par l'horloge
-  if (!edtPreviewDay) {
-    document.getElementById('rappels-widget').style.display = 'none';
-    rappelsLastKey = null;
-    return;
-  }
-  const classes = [...new Set(edtBuildCoursOfDay(edtPreviewDay).map(c => c.classe))];
-  const key = `preview:${edtPreviewDay.toDateString()}:${classes.join(',')}`;
-  if (key !== rappelsLastKey) {
-    rappelsLastKey = key;
-    fetchRappelsJour(classes, JOURS[edtPreviewDay.getDay()]);
-  }
+  rappelsRefresh();
 };
+setInterval(rappelsRefresh, 30000);
 
 // Premier appel
 updateCurrentClass();
