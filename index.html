@@ -1322,7 +1322,6 @@ const ALL_TOOLS = [
   { id: "matheval", name: "MathEval", desc: "Correction & evaluation", url: "https://matheval.netlify.app", icon: "✅", color: "green", mine: true, fav: false },
   { id: "bacready", name: "BacReady", desc: "Revisions Bac Maths", url: "https://bacready-maths.netlify.app", icon: "🎓", color: "purple", mine: true, fav: false },
   { id: "correctool", name: "CorrecTool", desc: "Correction rapide Pronote", url: "#", icon: "⌨️", color: "slate", mine: true, fav: false },
-  { id: "calcul", name: "Calcul Mental Prix", desc: "Exercices prix en 6e", url: "https://calcul-mental-prix.vercel.app", icon: "💰", color: "yellow", mine: true, fav: false },
   { id: "fraz", name: "App FR-AZ", desc: "Traduction eleve allophone", url: "https://fr-az-communication.netlify.app", icon: "🇦🇿", color: "sky", mine: true, fav: false },
   { id: "mmnet", name: "MathsMentales.net", desc: "Site original", url: "https://mathsmentales.net", icon: "https://beltools.fr/mmnet.png", color: "amber", fav: false },
 ];
@@ -1350,7 +1349,8 @@ function getState() {
   const ids = new Set(saved.tools.map(t => t.id));
   // Sync vignettes, svgIcon et icône depuis ALL_TOOLS (le code fait foi pour les outils intégrés)
   saved.tools.forEach(t => { const b = ALL_TOOLS.find(x => x.id === t.id); if (b) { t.svgIcon = b.svgIcon || null; t.url = b.url; t.icon = b.icon; if (!t.color && b.color) t.color = b.color; } });
-  saved.tools = saved.tools.filter(t => t.id !== 'sites-eleves');
+  // Un outil intégré retiré du code disparaît aussi des listes mémorisées (ex. ancien Calcul Mental Prix).
+  saved.tools = saved.tools.filter(t => t.id.startsWith('custom_') || ALL_TOOLS.some(b => b.id === t.id));
   const nw = ALL_TOOLS.filter(t => !ids.has(t.id) && t.id !== 'sites-eleves').map((t,i) => ({ ...t, fav: false, order: saved.tools.length + i }));
   return { version: 2, collapsed: saved.collapsed ?? true, tools: [...saved.tools, ...nw] };
 }
